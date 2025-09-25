@@ -1,0 +1,43 @@
+@startuml C4_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(user, "Користувач", "Читає новини, слухає подкасти...")
+Person(admin, "Адміністратор", "Керує джерелами новин та моніторить стан системи.")
+System_Ext(telegram, "Telegram API", "Платформа для взаємодії...")
+System_Ext(news_sources, "Джерела новин", "RSS-канали та новинні API.")
+System_Ext(notebook_llm, "NotebookLLM", "Сервіс для Text-to-Speech (через емуляцію).")
+
+System_Boundary(c1, "News Podcast Bot") {
+    Container(tg_bot, "Telegram Bot", "NodeJS, Telegraf.js", "Обробляє вхідні повідомлення від Telegram та взаємодіє з Backend API.")
+    Container(backend_api, "Backend API", "NodeJS, Express", "Містить бізнес-логіку: керування користувачами, підписками, темами новин, планування завдань.")
+    ContainerDb(db, "База даних", "MongoDB", "Зберігає дані про користувачів, підписки, статті та метадані подкастів.")
+    Container(news_fetcher, "Парсер новин", "BullMQ Worker", "Фоновий процес, що періодично опитує джерела новин за завданням з черги.")
+    Container(podcast_generator, "Генератор подкастів", "BullMQ Worker", "Фоновий процес, що генерує подкасти за завданням з черги.")
+    Container(task_queue, "Черга завдань", "BullMQ", "Забезпечує асинхронну комунікацію між API та фоновими процесами.")
+    ContainerDb(file_storage, "Сховище файлів", "FireBase Storage", "Зберігає згенеровані MP3 файли подкастів.")
+}
+
+' Зв'язки користувача та зовнішніх систем
+Rel(user, telegram, "Використовує")
+Rel(admin, backend_api, "Керує темами та моніторить", "HTTPS/JSON")
+Rel(telegram, tg_bot, "Надсилає вебхуки", "HTTPS")
+
+' Внутрішні зв'язки
+Rel(tg_bot, backend_api, "Викликає API", "HTTPS/JSON")
+
+Rel(backend_api, db, "Читає/записує", "JDBC")
+Rel(backend_api, task_queue, "Додає завдання для парсингу та генерації подкастів")
+Rel(backend_api, file_storage, "Отримує URL файлів для відправки користувачу", "HTTPS")
+
+Rel(news_fetcher, news_sources, "Запитує новини", "HTTPS")
+Rel(news_fetcher, db, "Зберігає статті", "JDBC")
+Rel_Up(news_fetcher, task_queue, "Отримує завдання")
+
+Rel(podcast_generator, db, "Читає статті та дані користувачів", "JDBC")
+Rel(podcast_generator, notebook_llm, "Надсилає текст", "HTTPS/JSON")
+Rel(podcast_generator, file_storage, "Зберігає MP3 файл", "HTTPS")
+Rel_Up(podcast_generator, task_queue, "Отримує завдання")
+
+@enduml

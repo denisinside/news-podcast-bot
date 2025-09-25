@@ -1,0 +1,24 @@
+@startuml C4_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(user, "Користувач", "Читає новини, слухає подкасти та керує своїми підписками.")
+Person(admin, "Адміністратор", "Керує джерелами новин та моніторить стан системи.")
+
+System_Ext(telegram, "Telegram API", "Платформа для взаємодії бота з користувачем.")
+System_Ext(news_sources, "Джерела новин", "Зовнішні RSS-канали та новинні API.")
+System_Ext(notebook_llm, "NotebookLLM API", "Сервіс для перетворення тексту в аудіо (Text-to-Speech).")
+
+System(news_podcast_bot, "News Podcast Bot", "Агрегує новини за інтересами користувача та генерує щоденні аудіо-подкасти.")
+
+' Зв'язки
+Rel(user, telegram, "Використовує", "Telegram Client")
+Rel(telegram, news_podcast_bot, "Надсилає команди та отримує повідомлення")
+
+Rel(admin, news_podcast_bot, "Керує та моніторить")
+
+Rel(news_podcast_bot, news_sources, "Запитує новини", "HTTPS")
+Rel(news_podcast_bot, notebook_llm, "Надсилає текст для генерації подкасту", "HTTPS/JSON")
+
+@enduml

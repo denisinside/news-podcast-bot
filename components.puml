@@ -1,0 +1,90 @@
+@startuml C4_Component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+' ======================================================
+' Контейнери для контексту
+' ======================================================
+Container(tg_bot, "Telegram Bot", "Telegraf.js")
+ContainerDb(db, "База даних", "MongoDB")
+Person(admin, "Адміністратор")
+
+' ======================================================
+' Компоненти всередині Backend API
+' ======================================================
+Container_Boundary(backend_api, "Backend API") {
+    Component(tg_controller, "TelegramController", "Telegraf.js", "Обробляє команди від Telegram Bot.")
+
+    Component(user_service, "UserService", "TypeScript", "Бізнес-логіка для керування користувачами.")
+    Component(sub_service, "SubscriptionService", "TypeScript", "Бізнес-логіка для керування підписками.")
+    Component(topic_service, "TopicService", "TypeScript", "Бізнес-логіка для керування темами новин.")
+    Component(scheduling_service, "SchedulingService", "TypeScript", "Створює завдання для парсингу та генерації подкастів у черзі.")
+
+    Component(repository, "Repository Layer", "Mongoose", "Абстракція для доступу до даних (User, Subscription, Topic, Article).")
+    Component(queue_client, "QueueClient", "BullMQ Client", "Відправляє завдання в чергу BullMQ.")
+}
+
+' ======================================================
+' Компоненти всередині Воркерів
+' ======================================================
+Container_Boundary(workers, "Workers (Background Processes)") {
+    Component(news_fetcher, "NewsFetcherProcessor", "BullMQ Worker", "Виконує завдання з парсингу новин по RSS-каналам.")
+    Component(podcast_generator, "PodcastGeneratorProcessor", "BullMQ Worker", "Генерує подкаст для користувача.")
+    
+    Component(news_service, "NewsFinderService", "TypeScript", "Логіка парсингу та збереження статей.")
+    Component(podcast_service, "PodcastService", "TypeScript", "Логіка генерації подкасту: вибірка статей, TTS, завантаження файлу.")
+}
+
+' ======================================================
+' Зовнішні системи
+' ======================================================
+System_Boundary(external, "External Systems & APIs") {
+    Component(rss_parser, "RSS Parser", "library", "Парсить XML з RSS каналів.")
+    Component(tts_emulator, "NotebookLMEmulator", "Puppeteer/Playwright", "Емулює дії користувача для генерації аудіо.")
+    Component(file_storage, "FileStorageClient", "Firebase SDK", "Клієнт для завантаження файлів у сховище.")
+}
+
+
+' ======================================================
+' Зв'язки
+' ======================================================
+' Admin Flow
+Rel(admin, tg_controller, "Керує темами, дивиться статистику", "HTTPS/JSON")
+Rel(tg_controller, topic_service, "Використовує")
+Rel(topic_service, repository, "Читає/записує теми (TopicRepository)")
+
+' User Flow (через Telegram)
+Rel(tg_bot, tg_controller, "Передає команди користувача")
+Rel(tg_controller, user_service, "Використовує")
+Rel(tg_controller, sub_service, "Використовує")
+
+Rel(user_service, repository, "CRUD операції з користувачами")
+Rel(sub_service, repository, "CRUD операції з підписками")
+
+' Scheduling Flow (як все запускається)
+Rel(scheduling_service, queue_client, "Додає завдання 'fetch-news' та 'generate-podcast'")
+
+' News Fetching Flow (воркер)
+Rel(queue_client, news_fetcher, "Сповіщає про нове завдання")
+Rel(news_fetcher, news_service, "Викликає")
+Rel(news_service, rss_parser, "Використовує для парсингу")
+Rel(news_service, repository, "Зберігає статті (ArticleRepository)")
+
+' Podcast Generation Flow (воркер)
+Rel(queue_client, podcast_generator, "Сповіщає про нове завдання")
+Rel(podcast_generator, podcast_service, "Викликає")
+
+' **Підбір новин для користувача (ключова логіка)**
+Rel_Neighbor(podcast_service, repository, "1. Отримує підписки користувача та теми")
+Rel(podcast_service, repository, "2. Знаходить відповідні статті за останні 24 години")
+
+Rel(podcast_service, tts_emulator, "3. Надсилає текст статей для озвучення")
+Rel(podcast_service, file_storage, "4. Завантажує згенерований MP3 файл")
+Rel(podcast_service, repository, "5. Зберігає посилання на подкаст (PodcastRepository)")
+
+
+' Зв'язки з БД
+Rel(repository, db, "Читає/записує дані", "MongoDB Driver")
+
+@enduml

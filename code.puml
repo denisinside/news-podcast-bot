@@ -1,0 +1,271 @@
+@startuml C4_Code
+title Рівень коду (Node.js/TypeScript Stack)
+
+' Налаштування вигляду
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+legend right
+  | Стереотип | Опис |
+  | <<Model>> | Mongoose Schema & Model |
+  | <<Service>> | Клас бізнес-логіки |
+  | <<Repository>> | Доступ до даних (Mongoose) |
+  | <<Strategy>> | Патерн "Стратегія" |
+  | <<Client>> | Клієнт до зовнішнього сервісу/API |
+  | <<Controller>> | Обробник команд/запитів |
+  | <<Processor>> | Обробник завдань з черги |
+  | <<UI>> | Робота з UI (кнопки, меню) |
+  | <<EntryPoint>> | Точка входу додатку/бота |
+end legend
+
+' ===============================================
+' Пакет Models: Mongoose Schemas & Models
+' ===============================================
+package "Models" {
+  class User <<Model>> {
+    + telegramId: number
+    + username: string
+    + createdAt: Date
+  }
+
+  class Topic <<Model>> {
+    + name: string
+    + sourceUrl: string ' RSS feed URL
+  }
+
+  class Subscription <<Model>> {
+    + userId: ObjectId
+    + topicId: ObjectId
+  }
+
+  class Article <<Model>> {
+    + title: string
+    + url: string
+    + content: string
+    + publicationDate: Date
+    + source: string
+    + imageUrl: string
+    + topicId: ObjectId
+  }
+
+  class Podcast <<Model>> {
+    + userId: ObjectId
+    + creationDate: Date
+    + fileUrl: string
+    + status: PodcastStatus
+    + articles: ObjectId[]
+  }
+
+  enum PodcastStatus {
+    PENDING, GENERATING, READY, FAILED
+  }
+}
+
+User "1" -- "0..*" Subscription
+Topic "1" -- "0..*" Subscription
+Topic "1" -- "0..*" Article
+
+' ===============================================
+' Пакет Infrastructure: Реалізація доступу до зовнішніх систем
+' ===============================================
+package "Infrastructure" {
+  ' --- Репозиторії (на базі Mongoose) ---
+  interface IUserRepository <<Repository>> {
+    + findByTelegramId(id: number): Promise<User | null>
+    + findById(id: ObjectId): Promise<User | null>
+    + create(data: {telegramId, username}): Promise<User>
+  }
+  interface ISubscriptionRepository <<Repository>> {
+    + findByUserId(userId: ObjectId): Promise<Subscription[]>
+    + create(userId: ObjectId, topicId: ObjectId): Promise<Subscription>
+    + delete(userId: ObjectId, topicId: ObjectId): Promise<boolean>
+    + exists(userId: ObjectId, topicId: ObjectId): Promise<boolean>
+  }
+  interface IArticleRepository <<Repository>> {
+    + create(article: Partial<Article>): Promise<Article>
+    + findByUrl(url: string): Promise<Article | null>
+    + findByTopicIdsSince(topicIds: ObjectId[], date: Date): Promise<Article[]>
+  }
+  interface IPodcastRepository <<Repository>> {
+     + create(data: {userId, articles}): Promise<Podcast>
+     + update(id: ObjectId, data: {status?, fileUrl?}): Promise<Podcast>
+  }
+  interface ITopicRepository <<Repository>> {
+    + findAll(): Promise<Topic[]>
+    + findById(id: ObjectId): Promise<Topic | null>
+    + create(topic: Partial<Topic>): Promise<Topic>
+    + update(id: ObjectId, topic: Partial<Topic>): Promise<Topic | null>
+    + delete(id: ObjectId): Promise<boolean>
+  }
+
+  ' --- Клієнти до зовнішніх API та сервісів ---
+  interface ITextToSpeechClient <<Client>> {
+    + generateAudio(text: string): Promise<Buffer>
+  }
+  class NotebookLMEmulator implements ITextToSpeechClient {
+    + generateAudio(text: string): Promise<Buffer>
+  }
+
+  interface IFileStorageClient <<Client>> {
+    + upload(file: Buffer, fileName: string): Promise<string>
+  }
+  interface IQueueClient <<Client>> {
+    + addNewsFetchJob(): Promise<void>
+    + addPodcastJob(data: {userId: ObjectId}): Promise<void>
+  }
+
+  ' --- Стратегії для отримання новин ---
+  interface INewsSourceStrategy <<Strategy>> {
+    + fetch(url: string): Promise<Partial<Article>[]>
+  }
+  class RssSource implements INewsSourceStrategy {
+    + fetch(url: string): Promise<Partial<Article>[]>
+  }
+}
+
+' ===============================================
+' Пакет Application: Сервіси та бізнес-логіка
+' ===============================================
+package "Application" {
+  class UserService <<Service>> {
+    - _userRepo: IUserRepository
+    + constructor(userRepo: IUserRepository)
+    + findOrCreate(ctx: Context): Promise<User>
+  }
+  class SubscriptionService <<Service>> {
+    - _subRepo: ISubscriptionRepository
+    + constructor(subRepo: ISubscriptionRepository)
+    + subscribe(userId: ObjectId, topicId: ObjectId): Promise<void>
+    + unsubscribe(userId: ObjectId, topicId: ObjectId): Promise<void>
+    + getByUserId(userId: ObjectId): Promise<Subscription[]>
+  }
+
+  class NewsFinderService <<Service>> {
+    - _articleRepo: IArticleRepository
+    - _topicRepo: ITopicRepository
+    - _strategy: INewsSourceStrategy
+    + constructor(articleRepo, topicRepo, strategy)
+    + fetchAndSaveAllTopics(): Promise<void>
+  }
+
+  class PodcastService <<Service>> {
+     - _podcastRepo: IPodcastRepository
+     - _articleRepo: IArticleRepository
+     - _subRepo: ISubscriptionRepository
+     - _ttsClient: ITextToSpeechClient
+     - _storageClient: IFileStorageClient
+     + constructor(podcastRepo, articleRepo, subRepo, ttsClient, storageClient)
+     + generateForUser(userId: ObjectId): Promise<string>
+  }
+
+  class SchedulingService <<Service>> {
+     - _queueClient: IQueueClient
+     - _userRepo: IUserRepository
+     + constructor(queueClient, userRepo)
+     + scheduleNewsFetching(): Promise<void>
+     + scheduleDailyPodcastsForAllUsers(): Promise<void>
+  }
+
+  class AdminService <<Service>> {
+    - _topicRepo: ITopicRepository
+    - _userRepo: IUserRepository
+    + constructor(topicRepo, userRepo)
+    + createTopic(name: string, sourceUrl: string): Promise<Topic>
+    + updateTopic(id: ObjectId, data: Partial<Topic>): Promise<Topic | null>
+    + deleteTopic(id: ObjectId): Promise<boolean>
+    + getAllTopics(): Promise<Topic[]>
+    + getUserStatistics(): Promise<any>
+  }
+}
+
+' ===============================================
+' Пакет Presentation: Точки входу та UI
+' ===============================================
+package "Presentation" {
+  ' --- Telegram Bot ---
+  class TelegramBot <<EntryPoint>> {
+    - _bot: Telegraf<Context>
+    - _controller: TelegramController
+    + constructor(token: string, controller: TelegramController)
+    + start(): void
+  }
+  class TelegramController <<Controller>> {
+    - _userService: UserService
+    - _subService: SubscriptionService
+    - _topicRepo: ITopicRepository
+    - _ui: TelegramUI
+    + constructor(userService, subService, topicRepo, ui)
+    + onStart(ctx: Context): Promise<void>
+    + onShowMenu(ctx: Context): Promise<void>
+    + onTopicAction(ctx: NarrowedContext<...>): Promise<void>
+  }
+  class TelegramUI <<UI>> {
+    + sendMainMenu(ctx: Context): Promise<void>
+    + sendTopicsMenu(ctx: Context, topics: Topic[], userSubs: Subscription[]): Promise<void>
+    + sendAdminMenu(ctx: Context, topics: Topic[], userSubs: Subscription[]): Promise<void>
+    + sendArticle(ctx: Content, article: Article): Promise<void>
+    + sendPodcast(ctx: Content, podcast: Podcast): Promise<void>
+  }
+
+  ' --- Admin Panel API ---
+  class AdminController <<Controller>> {
+    - _adminService: AdminService
+    + constructor(adminService: AdminService)
+    + getTopics(req: Request, res: Response): Promise<void>
+    + createTopic(req: Request, res: Response): Promise<void>
+    + updateTopic(req: Request, res: Response): Promise<void>
+    + deleteTopic(req: Request, res: Response): Promise<void>
+    + getUserStats(req: Request, res: Response): Promise<void>
+  }
+}
+
+' ===============================================
+' Пакет Workers: Обробники завдань BullMQ
+' ===============================================
+package "Workers" {
+  class NewsFetcherProcessor <<Processor>> {
+    - _newsService: NewsFinderService
+    + constructor(newsService: NewsFinderService)
+    + process(job: Job): Promise<void>
+  }
+
+  class PodcastGeneratorProcessor <<Processor>> {
+    - _podcastService: PodcastService
+    + constructor(podcastService: PodcastService)
+    + process(job: Job<{userId: ObjectId}>): Promise<void>
+  }
+}
+
+' ===============================================
+' Зв'язки між пакетами
+' ===============================================
+' Presentation -> Application
+TelegramBot --> TelegramController
+TelegramController ..> UserService
+TelegramController ..> SubscriptionService
+TelegramController ..> ITopicRepository
+TelegramController ..> TelegramUI
+TelegramController ..> AdminController
+
+AdminController ..> AdminService
+
+' Application -> Infrastructure (Interfaces) & Models
+UserService ..> IUserRepository
+SubscriptionService ..> ISubscriptionRepository
+AdminService ..> ITopicRepository
+AdminService ..> IUserRepository
+NewsFinderService ..> IArticleRepository
+NewsFinderService ..> ITopicRepository
+NewsFinderService o--> INewsSourceStrategy
+PodcastService ..> IPodcastRepository
+PodcastService ..> IArticleRepository
+PodcastService ..> ISubscriptionRepository
+PodcastService ..> ITextToSpeechClient
+PodcastService ..> IFileStorageClient
+SchedulingService ..> IQueueClient
+SchedulingService ..> IUserRepository
+
+' Workers -> Application
+NewsFetcherProcessor ..> NewsFinderService
+PodcastGeneratorProcessor ..> PodcastService
+
+@enduml

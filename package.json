@@ -1,0 +1,28 @@
+{
+  "name": "news-podcast-bot",
+  "version": "1.0.0",
+  "description": "News podcast bot application",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "nodemon --exec ts-node src/index.ts",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "news",
+    "podcast",
+    "bot",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "nodemon": "^3.1.4",
+    "rimraf": "^5.0.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2"
+  }
+}
