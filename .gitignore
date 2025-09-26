@@ -1,0 +1,27 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+# Editor-based HTTP Client requests
+/httpRequests/
+
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+# Environment variables
+/.env
+.env.local
+.env.*.local
+
+# IDE / Editor
+/.idea
+/.vscode
+
+# TypeScript
+*.tsbuildinfo
+
+# Build output
+/dist
+/build
+/node_modules
