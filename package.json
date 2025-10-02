@@ -21,6 +21,7 @@
   "author": "Your Name",
   "type": "commonjs",
   "main": "dist/index.js",
+  "types": "./dist/index.d.ts",
   "directories": {
     "doc": "docs",
     "test": "tests"
@@ -44,6 +45,7 @@
     "redis": "^5.8.2",
     "rss-parser": "^3.13.0",
     "telegraf": "^4.16.3",
+    "telegraf-session-mongodb": "^2.0.2",
     "winston": "^3.11.0"
   },
   "devDependencies": {
