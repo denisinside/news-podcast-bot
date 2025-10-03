@@ -1,24 +1,51 @@
-import { IUser, User } from "../../models";
-import { IUserService } from "../interfaces";
+import { IUser } from '@models/User';
+import { IUserRepository } from '@infrastructure/repositories/IUserRepository';
+import { Context } from 'telegraf';
 
-export class UserService implements IUserService {
-    async createUser(telegramId: number, username: string): Promise<IUser | null> {
+export class UserService {
+    private userRepository: IUserRepository;
 
-        const newUser = new User({
-            telegramId,
-            username,
-            createdAt: new Date(),
-        });
+    constructor(userRepository: IUserRepository) {
+        this.userRepository = userRepository;
+    }
 
-        return await newUser.save();
+    async findOrCreate(ctx: Context): Promise<IUser> {
+        const telegramId = ctx.from?.id;
+        const username = ctx.from?.username;
+
+        if (!telegramId) {
+            throw new Error('Telegram ID is required');
+        }
+
+        // Try to find existing user
+        let user = await this.userRepository.findByTelegramId(telegramId);
+
+        // Create new user if not found
+        if (!user) {
+            user = await this.userRepository.create({
+                telegramId,
+                username,
+                createdAt: new Date()
+            });
+            console.log(`Created new user: ${telegramId}`);
+        }
+
+        return user;
     }
 
     async findById(id: string): Promise<IUser | null> {
-        return User.findById(id);
+        return await this.userRepository.findById(id);
     }
 
     async findByTelegramId(telegramId: number): Promise<IUser | null> {
-        return User.findOne({ telegramId });
+        return await this.userRepository.findByTelegramId(telegramId);
     }
 
+    async createUser(telegramId: number, username?: string): Promise<IUser> {
+        return await this.userRepository.create({
+            telegramId,
+            username,
+            createdAt: new Date()
+        });
+    }
 }

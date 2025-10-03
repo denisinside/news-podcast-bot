@@ -1,42 +1,37 @@
-import { ISubscriptionService } from "../interfaces/ISubscriptionService";
-import { ISubscription } from "../../models";
+import { ISubscription } from '@models/Subscription';
+import { ISubscriptionRepository } from '@infrastructure/repositories/ISubscriptionRepository';
+import { ISubscriptionService } from '../interfaces/ISubscriptionService';
+import { Types } from 'mongoose';
 
 export class SubscriptionService implements ISubscriptionService {
-    private subscriptions: { userId: number; topicId: string }[] = [];
+    private subscriptionRepository: ISubscriptionRepository;
 
-    async subscribe(userId: number, topicId: string): Promise<void> {
-        // Check if already subscribed
-        const existingSubscription = this.subscriptions.find(
-            sub => sub.userId === userId && sub.topicId === topicId
-        );
+    constructor(subscriptionRepository: ISubscriptionRepository) {
+        this.subscriptionRepository = subscriptionRepository;
+    }
+
+    async subscribe(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<void> {
+        const exists = await this.subscriptionRepository.exists(userId, topicId);
         
-        if (!existingSubscription) {
-            this.subscriptions.push({ userId, topicId });
-            console.log(`Mock: користувач ${userId} підписався на тему ${topicId}`);
+        if (!exists) {
+            await this.subscriptionRepository.create(userId, topicId);
+            console.log(`User ${userId} subscribed to topic ${topicId}`);
+        } else {
+            console.log(`User ${userId} already subscribed to topic ${topicId}`);
         }
     }
 
-    async unsubscribe(userId: number, topicId: string): Promise<void> {
-        const index = this.subscriptions.findIndex(
-            sub => sub.userId === userId && sub.topicId === topicId
-        );
+    async unsubscribe(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<void> {
+        const deleted = await this.subscriptionRepository.delete(userId, topicId);
         
-        if (index !== -1) {
-            this.subscriptions.splice(index, 1);
-            console.log(`Mock: користувач ${userId} відписався від теми ${topicId}`);
+        if (deleted) {
+            console.log(`User ${userId} unsubscribed from topic ${topicId}`);
+        } else {
+            console.log(`User ${userId} was not subscribed to topic ${topicId}`);
         }
     }
 
-    async getUserSubscriptions(userId: number): Promise<ISubscription[]> {
-        const userSubs = this.subscriptions.filter(sub => sub.userId === userId);
-        console.log(`Mock: користувач ${userId} має ${userSubs.length} підписок`);
-        
-        // Return mock subscriptions with topic info
-        return userSubs.map(sub => ({
-            userId: sub.userId,
-            topicId: sub.topicId,
-            _id: sub.topicId, // Mock ID
-            __v: 0
-        } as any));
+    async getByUserId(userId: Types.ObjectId): Promise<ISubscription[]> {
+        return await this.subscriptionRepository.findByUserId(userId);
     }
 }
