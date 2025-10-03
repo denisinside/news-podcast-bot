@@ -11,7 +11,6 @@ export class SubscriptionService implements ISubscriptionService {
     }
 
     async subscribe(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<void> {
-        // Check if subscription already exists
         const exists = await this.subscriptionRepository.exists(userId, topicId);
         
         if (!exists) {
