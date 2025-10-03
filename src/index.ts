@@ -8,8 +8,8 @@ import { SubscriptionService } from "./application/services/SubscriptionService"
 import {StartScene} from "./presentation/telegram/scenes/StartScene";
 
 const config = new ConfigService();
-const adminService = new AdminService();
-const subscriptionService = new SubscriptionService();
+const adminService = new AdminService(null as any, null as any);
+const subscriptionService = new SubscriptionService(null as any);
 
 
 const commands: ICommand[] = [

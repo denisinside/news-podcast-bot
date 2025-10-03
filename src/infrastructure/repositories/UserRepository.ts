@@ -27,8 +27,4 @@ export class UserRepository implements IUserRepository {
     async findAll(): Promise<IUser[]> {
         return await User.find();
     }
-
-    async findActiveUsers(): Promise<IUser[]> {
-        return await User.find({ isActive: true });
-    }
 }

@@ -7,5 +7,4 @@ export interface IUserRepository {
     update(id: string, updateData: Partial<IUser>): Promise<IUser | null>;
     delete(id: string): Promise<boolean>;
     findAll(): Promise<IUser[]>;
-    findActiveUsers(): Promise<IUser[]>;
 }

@@ -32,7 +32,7 @@ export class SubscribeScene implements IScene{
 
         this.scene.action(/.*/, async (ctx) => {
             const topicId = ctx.match[0];
-            await this.subscriptionService.subscribe(ctx.from!.id, topicId);
+            await this.subscriptionService.subscribe(ctx.from!.id as any, topicId as any);
             await ctx.editMessageText("✅ Ви підписані на цю тему!");
             await ctx.scene.leave();
         });
