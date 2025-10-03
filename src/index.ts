@@ -5,13 +5,16 @@ import { IScene } from "./presentation/telegram/scenes/IScene";
 import { SubscribeScene } from "./presentation/telegram/scenes/SubscribeScene";
 import { UnsubscribeScene } from "./presentation/telegram/scenes/UnsubscribeScene";
 import { MySubscriptionsScene } from "./presentation/telegram/scenes/MySubscriptionsScene";
+import { SettingsScene } from "./presentation/telegram/scenes/SettingsScene";
 import { AdminService } from "./application/services/AdminService";
 import { SubscriptionService } from "./application/services/SubscriptionService";
+import { UserSettingsService } from "./application/services/UserSettingsService";
 import { StartScene } from "./presentation/telegram/scenes/StartScene";
 
 const config = new ConfigService();
 const adminService = new AdminService();
 const subscriptionService = new SubscriptionService();
+const userSettingsService = new UserSettingsService();
 
 
 const commands: ICommand[] = [];
@@ -20,7 +23,8 @@ const scenes: IScene[] = [
     new StartScene(adminService, subscriptionService),
     new SubscribeScene(adminService, subscriptionService),
     new UnsubscribeScene(adminService, subscriptionService),
-    new MySubscriptionsScene(adminService, subscriptionService)
+    new MySubscriptionsScene(adminService, subscriptionService),
+    new SettingsScene(userSettingsService)
 ];
 
 
