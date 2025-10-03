@@ -29,14 +29,34 @@ export class StartScene implements IScene {
         });
 
         this.scene.action("subscribe", async (ctx) => {
-            await ctx.answerCbQuery();
-            await ctx.scene.enter("subscribe");
+            try {
+                await ctx.answerCbQuery();
+                await ctx.scene.enter("subscribe");
+            } catch (error) {
+                console.log("Callback query error (subscribe):", error);
+                // Try to enter scene anyway
+                try {
+                    await ctx.scene.enter("subscribe");
+                } catch (sceneError) {
+                    console.log("Scene enter error:", sceneError);
+                }
+            }
         });
 
         this.scene.action("skip", async (ctx) => {
-            await ctx.answerCbQuery();
-            await ctx.editMessageText("Добре! Можеш підписатися пізніше через команди.");
-            await ctx.scene.leave();
+            try {
+                await ctx.answerCbQuery();
+                await ctx.editMessageText("Добре! Можеш підписатися пізніше через команди.");
+                await ctx.scene.leave();
+            } catch (error) {
+                console.log("Callback query error (skip):", error);
+                // Try to leave scene anyway
+                try {
+                    await ctx.scene.leave();
+                } catch (sceneError) {
+                    console.log("Scene leave error:", sceneError);
+                }
+            }
         });
     }
 }

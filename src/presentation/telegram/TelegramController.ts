@@ -21,6 +21,16 @@ export class TelegramController {
     public init() {
         this.bot.use(this.stage.middleware());
 
+        // Global error handler
+        this.bot.catch((err, ctx) => {
+            console.log('Bot error:', err);
+            try {
+                ctx.reply('Виникла помилка. Спробуйте пізніше.');
+            } catch (replyError) {
+                console.log('Reply error:', replyError);
+            }
+        });
+
         this.registerCommands();
     }
 

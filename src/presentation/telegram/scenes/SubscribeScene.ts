@@ -31,10 +31,22 @@ export class SubscribeScene implements IScene{
         });
 
         this.scene.action(/.*/, async (ctx) => {
-            const topicId = ctx.match[0];
-            await this.subscriptionService.subscribe(ctx.from!.id, topicId);
-            await ctx.editMessageText("✅ Ви підписані на цю тему!");
-            await ctx.scene.leave();
+            try {
+                const topicId = ctx.match[0];
+                await this.subscriptionService.subscribe(ctx.from!.id, topicId);
+                await ctx.answerCbQuery("✅ Ви підписані на цю тему!");
+                await ctx.editMessageText("✅ Ви підписані на цю тему!");
+                await ctx.scene.leave();
+            } catch (error) {
+                console.log("Subscription error:", error);
+                try {
+                    await ctx.answerCbQuery("❌ Помилка підписки");
+                    await ctx.editMessageText("❌ Виникла помилка при підписці. Спробуйте пізніше.");
+                    await ctx.scene.leave();
+                } catch (fallbackError) {
+                    console.log("Fallback error:", fallbackError);
+                }
+            }
         });
     }
 
