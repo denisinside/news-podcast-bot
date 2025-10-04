@@ -1,23 +1,34 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export interface ISubscription extends Document {
-    userId: Types.ObjectId;
+    userId: string;
     topicId: Types.ObjectId;
+    subscribedAt: Date;
+    isActive: boolean;
 }
 
 const SubscriptionSchema = new Schema<ISubscription>({
     userId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        type: String,
+        required: true,
+        ref: 'User'
     },
     topicId: {
         type: Schema.Types.ObjectId,
-        ref: 'Topic',
-        required: true
+        required: true,
+        ref: 'Topic'
+    },
+    subscribedAt: {
+        type: Date,
+        default: Date.now
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     }
 });
 
 SubscriptionSchema.index({ userId: 1, topicId: 1 }, { unique: true });
+SubscriptionSchema.index({ userId: 1, isActive: 1 });
 
 export const Subscription = model<ISubscription>('Subscription', SubscriptionSchema);
