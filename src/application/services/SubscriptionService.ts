@@ -31,7 +31,7 @@ export class SubscriptionService implements ISubscriptionService {
         }
     }
 
-    async getByUserId(userId: Types.ObjectId): Promise<ISubscription[]> {
+    async getUserSubscriptions(userId: Types.ObjectId): Promise<ISubscription[]> {
         return await this.subscriptionRepository.findByUserId(userId);
     }
 }
