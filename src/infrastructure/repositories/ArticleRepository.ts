@@ -36,7 +36,6 @@ export class ArticleRepository implements IArticleRepository {
     }
 
     async bulkInsert(articles: Partial<IArticle>[]): Promise<IArticle[]> {
-        // Check for existing articles by URL to avoid duplicates
         const existingUrls = await Article.find({
             url: { $in: articles.map(article => article.url) }
         }).distinct('url');
