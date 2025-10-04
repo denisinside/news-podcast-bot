@@ -11,6 +11,11 @@ export class TopicRepository implements ITopicRepository {
     }
 
     async create(topic: Partial<ITopic>): Promise<ITopic> {
+        const existingTopic = await this.findBySourceUrl(topic.sourceUrl!);
+        if (existingTopic) {
+            throw new Error(`Topic with sourceUrl '${topic.sourceUrl}' already exists`);
+        }
+        
         const newTopic = new Topic(topic);
         return await newTopic.save();
     }

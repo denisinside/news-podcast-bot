@@ -32,7 +32,7 @@ export class StartScene implements IScene {
             // Get user subscriptions if services are available
             if (this.subscriptionService && this.adminService) {
                 try {
-                    const subscriptions = await this.subscriptionService.getUserSubscriptions(ctx.from!.id);
+                    const subscriptions = await this.subscriptionService.getUserSubscriptions(ctx.from!.id as any);
                     
                     if (subscriptions.length > 0) {
                         // Get all topics to match names
