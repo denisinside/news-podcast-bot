@@ -5,6 +5,8 @@ import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
 import { ISubscriptionService } from "@application/interfaces/ISubscriptionService";
 import { IUserService } from "@application/interfaces";
+import {IUser} from "@/models";
+import {Types} from "mongoose";
 
 export class StartScene implements IScene {
     private readonly scene: Scenes.BaseScene<IBotContext>;
@@ -32,7 +34,9 @@ export class StartScene implements IScene {
             const tgId = String(ctx.from?.id);
             if (!tgId) return ctx.reply("Не вдалося отримати ваш Telegram ID");
 
-            let user = await this.userService.findById(tgId);
+            const username = String(ctx.from?.first_name);
+
+            const user: IUser = await this.userService.findOrCreateUser(tgId, username);
 
             let subscriptionsText = "";
 

@@ -10,21 +10,16 @@ export class UserService implements IUserService {
         this.userRepository = userRepository;
     }
 
-    async findOrCreate(ctx: Context): Promise<IUser> {
-        const telegramId = ctx.from?.id;
-        const username = ctx.from?.username;
+    async findOrCreateUser(telegramId: string, username: string): Promise<IUser>{
 
         if (!telegramId) {
             throw new Error('Telegram ID is required');
         }
-        const telegramIdStr = String(telegramId);
-        // Try to find existing user
-        let user = await this.userRepository.findById(telegramIdStr);
+        let user = await this.userRepository.findById(telegramId);
 
-        // Create new user if not found
         if (!user) {
             user = await this.userRepository.create({
-                _id:telegramIdStr,
+                _id:telegramId,
                 username,
                 createdAt: new Date()
             });
