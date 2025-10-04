@@ -6,7 +6,7 @@ import { SubscribeScene } from "./presentation/telegram/scenes/SubscribeScene";
 //import { UnsubscribeScene } from "./presentation/telegram/scenes/UnsubscribeScene";
 //import { MySubscriptionsScene } from "./presentation/telegram/scenes/MySubscriptionsScene";
 import { SettingsScene } from "./presentation/telegram/scenes/SettingsScene";
-import {AdminService, UserService} from "@application/services";
+import { AdminService, UserService } from "@application/services";
 import { SubscriptionService } from "@application/services";
 import { UserSettingsService } from "@application/services/UserSettingsService";
 import { StartScene } from "./presentation/telegram/scenes/StartScene";
@@ -17,6 +17,7 @@ import { ArticleRepository } from "./infrastructure/repositories/ArticleReposito
 import { NewsFinderService } from "./application/services/NewsFinderService";
 import { SchedulingService } from "./application/services/SchedulingService";
 import { QueueClient } from "./infrastructure/clients/QueueClient";
+import { IUserService } from "@application/interfaces";
 
 const config = new ConfigService();
 
