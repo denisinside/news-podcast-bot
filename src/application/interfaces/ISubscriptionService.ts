@@ -1,7 +1,8 @@
 import { Types } from 'mongoose';
+import { ISubscription } from "@/models";
 
 export interface ISubscriptionService {
-    subscribe(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<void>;
-    unsubscribe(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<void>;
-    getByUserId(userId: Types.ObjectId): Promise<any[]>;
+    subscribe(userId: string, topicId: Types.ObjectId): Promise<void>;
+    unsubscribe(userId: string, topicId: Types.ObjectId): Promise<void>;
+    getUserSubscriptions(userId: string): Promise<ISubscription[]>;
 }

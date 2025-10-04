@@ -1,17 +1,15 @@
-import { Schema, model, Document, ObjectId } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
 
 export interface IUser extends Document {
-    telegramId: number;
+    _id: string;
     username?: string;
     createdAt: Date;
 }
 
 const UserSchema = new Schema<IUser>({
-    telegramId: {
-        type: Number,
+    _id: {
+        type: String,
         required: true,
-        unique: true,
-        index: true
     },
     username: {
         type: String,

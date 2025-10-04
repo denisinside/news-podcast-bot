@@ -29,7 +29,7 @@ export class PodcastService {
         this.storageClient = storageClient;
     }
 
-    async generateForUser(userId: Types.ObjectId): Promise<string> {
+    async generateForUser(userId: string): Promise<string> {
         try {
             // Get user's subscriptions
             const subscriptions = await this.subscriptionRepository.findByUserId(userId);

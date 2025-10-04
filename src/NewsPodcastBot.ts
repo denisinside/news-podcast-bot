@@ -1,11 +1,11 @@
-import { IConfigService } from "./config/IConfigService";
+import { IConfigService } from "@config/IConfigService";
 import { Telegraf } from "telegraf";
-import { IBotContext } from "./context/IBotContext";
+import { IBotContext } from "@context/IBotContext";
 import { session }  from "telegraf-session-mongodb";
 import { TelegramController } from "./presentation/telegram/TelegramController";
 import { ICommand } from "./presentation/telegram/commands/ICommand";
 import { IScene }   from "./presentation/telegram/scenes/IScene";
-import { MongoDbService } from "./config/MongoDbService";
+import { MongoDbService } from "@config/MongoDbService";
 import { Db } from "mongodb";
 
 export class NewsPodcastBot {

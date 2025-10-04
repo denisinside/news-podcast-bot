@@ -1,17 +1,19 @@
 import { IScene } from "./IScene";
 import { Markup, Scenes } from "telegraf";
-import { IBotContext } from "../../../context/IBotContext";
+import { IBotContext } from "@context/IBotContext";
 import { BaseScene } from "telegraf/scenes";
-import { IAdminService } from "../../../application/interfaces/IAdminService";
-import { ISubscriptionService } from "../../../application/interfaces/ISubscriptionService";
+import { IAdminService } from "@application/interfaces/IAdminService";
+import { ISubscriptionService } from "@application/interfaces/ISubscriptionService";
+import { IUserService } from "@application/interfaces";
 
 export class StartScene implements IScene {
     private readonly scene: Scenes.BaseScene<IBotContext>;
     name: string = "start";
 
     constructor(
-        private readonly adminService?: IAdminService,
-        private readonly subscriptionService?: ISubscriptionService
+        private readonly adminService: IAdminService,
+        private readonly subscriptionService: ISubscriptionService,
+        private readonly userService: IUserService
     ) {
         this.scene = new BaseScene<IBotContext>(this.name);
         this.registerHandlers();
@@ -26,21 +28,28 @@ export class StartScene implements IScene {
             console.log("=== StartScene ENTER called ===");
             console.log("User ID:", ctx.from?.id);
             console.log("Current scene:", ctx.scene?.session?.current);
-            
+
+            const tgId = String(ctx.from?.id);
+            if (!tgId) return ctx.reply("Не вдалося отримати ваш Telegram ID");
+
+            let user = await this.userService.findById(tgId);
+
             let subscriptionsText = "";
-            
+
             // Get user subscriptions if services are available
             if (this.subscriptionService && this.adminService) {
                 try {
-                    const subscriptions = await this.subscriptionService.getUserSubscriptions(ctx.from!.id);
-                    
+                    const subscriptions = await this.subscriptionService.getUserSubscriptions(String(ctx.from!.id));
+
                     if (subscriptions.length > 0) {
                         // Get all topics to match names
                         const allTopics = await this.adminService.getAllTopics();
-                        const subscribedTopics = allTopics.filter(topic => 
+                        console.log("All Topics:", allTopics);
+                        const subscribedTopics = allTopics.filter(topic =>
                             subscriptions.some(sub => sub.topicId === topic.id)
                         );
-                        
+                        console.log("All Topics:", allTopics);
+
                         if (subscribedTopics.length > 0) {
                             subscriptionsText = "\n\n*📋 Ваші поточні підписки:*\n" +
                                 subscribedTopics.map(topic => `• ${topic.name}`).join('\n');
@@ -53,7 +62,7 @@ export class StartScene implements IScene {
                     subscriptionsText = "";
                 }
             }
-            
+
             await ctx.reply(
                 "🎧 *Ласкаво просимо до News Podcast Bot!*\n\n" +
                 "Я допоможу вам залишатися в курсі подій та отримувати персоналізовані новини у вигляді подкастів.\n\n" +
@@ -64,7 +73,7 @@ export class StartScene implements IScene {
                 "• 🎯 Персоналізувати контент за вашими інтересами" +
                 subscriptionsText + "\n\n" +
                 "*🚀 Почніть з підписки на цікаві теми!*",
-                { 
+                {
                     parse_mode: 'Markdown',
                     reply_markup: Markup.inlineKeyboard([
                         [Markup.button.callback("📝 Підписатися на теми", "subscribe")],
@@ -127,6 +136,7 @@ export class StartScene implements IScene {
         this.scene.action("settings", async (ctx) => {
             try {
                 console.log("Settings button clicked in StartScene");
+                console.log(ctx);
                 await ctx.answerCbQuery();
                 await ctx.scene.enter("settings");
             } catch (error) {
@@ -164,7 +174,7 @@ export class StartScene implements IScene {
                     "• Використовуйте кнопки меню для зручної навігації\n\n" +
                     "*🆘 Підтримка:*\n" +
                     "Якщо виникли питання, скористайтеся кнопкою 'ℹ️ Допомога' в головному меню",
-                    { 
+                    {
                         parse_mode: 'Markdown',
                         reply_markup: Markup.inlineKeyboard([
                             [Markup.button.callback("🔙 Назад до меню", "back_to_start")]

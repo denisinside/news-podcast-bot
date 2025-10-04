@@ -1,5 +1,5 @@
 import { IUserSettingsService } from "../interfaces/IUserSettingsService";
-import { IUserSettings, NewsFrequency, UserSettings } from "../../models/UserSettings";
+import { IUserSettings, NewsFrequency, UserSettings } from "@/models";
 
 export class UserSettingsService implements IUserSettingsService {
     

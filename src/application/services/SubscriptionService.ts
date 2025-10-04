@@ -1,7 +1,7 @@
-import { ISubscription } from '@models/Subscription';
-import { ISubscriptionRepository } from '@infrastructure/repositories/ISubscriptionRepository';
-import { ISubscriptionService } from '../interfaces/ISubscriptionService';
-import { Types } from 'mongoose';
+import { ISubscriptionService } from "../interfaces/ISubscriptionService";
+import { ISubscription } from "@/models";
+import { ISubscriptionRepository } from "@infrastructure/repositories";
+import { Types } from "mongoose";
 
 export class SubscriptionService implements ISubscriptionService {
     private subscriptionRepository: ISubscriptionRepository;
@@ -10,9 +10,9 @@ export class SubscriptionService implements ISubscriptionService {
         this.subscriptionRepository = subscriptionRepository;
     }
 
-    async subscribe(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<void> {
+    async subscribe(userId: string, topicId: Types.ObjectId): Promise<void> {
         const exists = await this.subscriptionRepository.exists(userId, topicId);
-        
+
         if (!exists) {
             await this.subscriptionRepository.create(userId, topicId);
             console.log(`User ${userId} subscribed to topic ${topicId}`);
@@ -21,9 +21,9 @@ export class SubscriptionService implements ISubscriptionService {
         }
     }
 
-    async unsubscribe(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<void> {
+    async unsubscribe(userId: string, topicId: Types.ObjectId): Promise<void> {
         const deleted = await this.subscriptionRepository.delete(userId, topicId);
-        
+
         if (deleted) {
             console.log(`User ${userId} unsubscribed from topic ${topicId}`);
         } else {
@@ -31,7 +31,7 @@ export class SubscriptionService implements ISubscriptionService {
         }
     }
 
-    async getByUserId(userId: Types.ObjectId): Promise<ISubscription[]> {
+    async getUserSubscriptions(userId: string): Promise<ISubscription[]> {
         return await this.subscriptionRepository.findByUserId(userId);
     }
 }
