@@ -7,6 +7,11 @@ import { ISubscriptionRepository } from '@infrastructure/repositories/ISubscript
 import { IFileStorageClient } from '@infrastructure/clients/IFileStorageClient';
 import { Types } from 'mongoose';
 import { IGeminiClient } from '@infrastructure/clients/IGeminiClient';
+import ffmpeg from 'fluent-ffmpeg';
+import * as ffmpegPath from '@ffmpeg-installer/ffmpeg';
+import { Readable, Writable } from 'stream';
+
+ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 export class PodcastService {
     private podcastRepository: IPodcastRepository;
@@ -58,8 +63,10 @@ export class PodcastService {
 
             const audioBuffer = await this.geminiClient.generateAudio(speaker1, speaker2, text);
 
+            const mp3Buffer = await this.convertToMp3(audioBuffer);
+
             const fileName = `podcast_${userId}_${podcast._id}.mp3`;
-            const fileUrl = await this.storageClient.upload(audioBuffer, fileName);
+            const fileUrl = await this.storageClient.upload(mp3Buffer, fileName);
 
             await this.podcastRepository.update(podcast._id as any, {
                 status: 'READY',
@@ -71,6 +78,49 @@ export class PodcastService {
             console.error('Error generating podcast:', error);
             throw error;
         }
+    }
+
+    private convertToMp3(inputBuffer: Buffer): Promise<Buffer> {
+        return new Promise((resolve, reject) => {
+            if (!inputBuffer || inputBuffer.length === 0) {
+                reject(new Error('Input buffer is empty or invalid'));
+                return;
+            }
+
+            const outputBuffers: Buffer[] = [];
+
+            const readableStream = new Readable();
+            readableStream._read = () => {};
+            readableStream.push(inputBuffer);
+            readableStream.push(null);
+
+            const writableStream = new Writable({
+                write(chunk, encoding, callback) {
+                    outputBuffers.push(chunk);
+                    callback();
+                }
+            });
+
+            ffmpeg(readableStream)
+                .inputFormat('s16le')
+                .inputOptions([
+                    '-ar 24000',
+                    '-ac 1'
+                ])
+                .audioCodec('libmp3lame')
+                .audioBitrate('128k')
+                .toFormat('mp3')
+                .on('error', (err) => {
+                    console.error('FFmpeg conversion error:', err);
+                    reject(new Error(`FFmpeg error: ${err.message}`));
+                })
+                .on('end', () => {
+                    console.log('Audio conversion completed successfully');
+                    const outputBuffer = Buffer.concat(outputBuffers);
+                    resolve(outputBuffer);
+                })
+                .pipe(writableStream, { end: true });
+        });
     }
 
     private async getArticlesForPodcast(subscriptions: ISubscription[]): Promise<IArticle[]> {
