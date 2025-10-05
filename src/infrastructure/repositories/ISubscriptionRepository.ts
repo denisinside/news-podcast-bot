@@ -2,7 +2,7 @@ import { ISubscription } from '@models/Subscription';
 import { Types } from 'mongoose';
 
 export interface ISubscriptionRepository {
-    findByUserId(userId: Types.ObjectId): Promise<ISubscription[]>;
+    findByUserId(userId: string): Promise<ISubscription[]>;
     create(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<ISubscription>;
     delete(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<boolean>;
     exists(userId: Types.ObjectId, topicId: Types.ObjectId): Promise<boolean>;

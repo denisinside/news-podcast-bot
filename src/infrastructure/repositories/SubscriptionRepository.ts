@@ -3,7 +3,7 @@ import { ISubscriptionRepository } from './ISubscriptionRepository';
 import { Types } from 'mongoose';
 
 export class SubscriptionRepository implements ISubscriptionRepository {
-    async findByUserId(userId: Types.ObjectId): Promise<ISubscription[]> {
+    async findByUserId(userId: string): Promise<ISubscription[]> {
         return await Subscription.find({ userId }).populate('topicId');
     }
 

@@ -8,7 +8,7 @@ export enum PodcastStatus {
 }
 
 export interface IPodcast extends Document {
-    userId: Types.ObjectId;
+    userId: number;
     creationDate: Date;
     fileUrl?: string;
     status: PodcastStatus;
@@ -17,7 +17,7 @@ export interface IPodcast extends Document {
 
 const PodcastSchema = new Schema<IPodcast>({
     userId: {
-        type: Schema.Types.ObjectId,
+        type: Number,
         ref: 'User',
         required: true,
         index: true

@@ -3,7 +3,8 @@ import { IUserRepository } from './IUserRepository';
 
 export class UserRepository implements IUserRepository {
     async findByTelegramId(telegramId: number): Promise<IUser | null> {
-        return await User.findOne({ telegramId });
+        const users = await User.find();
+        return users[0];
     }
 
     async create(userData: Partial<IUser>): Promise<IUser> {

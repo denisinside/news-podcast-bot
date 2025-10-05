@@ -1,73 +1,66 @@
-import { IPodcast } from '@models/Podcast';
+import { IPodcast, PodcastStatus } from '@models/Podcast';
 import { IArticle } from '@models/Article';
 import { ISubscription } from '@models/Subscription';
 import { IPodcastRepository } from '@infrastructure/repositories/IPodcastRepository';
 import { IArticleRepository } from '@infrastructure/repositories/IArticleRepository';
 import { ISubscriptionRepository } from '@infrastructure/repositories/ISubscriptionRepository';
-import { ITextToSpeechClient } from '@infrastructure/clients/ITextToSpeechClient';
 import { IFileStorageClient } from '@infrastructure/clients/IFileStorageClient';
 import { Types } from 'mongoose';
+import { IGeminiClient } from '@infrastructure/clients/IGeminiClient';
 
 export class PodcastService {
     private podcastRepository: IPodcastRepository;
     private articleRepository: IArticleRepository;
     private subscriptionRepository: ISubscriptionRepository;
-    private ttsClient: ITextToSpeechClient;
     private storageClient: IFileStorageClient;
+    private geminiClient: IGeminiClient;
 
     constructor(
         podcastRepository: IPodcastRepository,
         articleRepository: IArticleRepository,
         subscriptionRepository: ISubscriptionRepository,
-        ttsClient: ITextToSpeechClient,
-        storageClient: IFileStorageClient
+        storageClient: IFileStorageClient,
+        geminiClient: IGeminiClient
     ) {
         this.podcastRepository = podcastRepository;
         this.articleRepository = articleRepository;
         this.subscriptionRepository = subscriptionRepository;
-        this.ttsClient = ttsClient;
         this.storageClient = storageClient;
+        this.geminiClient = geminiClient;
     }
 
-    async generateForUser(userId: Types.ObjectId): Promise<string> {
+    async generateForUser(userId: string): Promise<string> {
         try {
-            // Get user's subscriptions
             const subscriptions = await this.subscriptionRepository.findByUserId(userId);
             
             if (subscriptions.length === 0) {
                 throw new Error('User has no subscriptions');
             }
 
-            // Get topic IDs from subscriptions
-            const topicIds = subscriptions.map(sub => sub.topicId);
-
-            // Get recent articles from subscribed topics (last 24 hours)
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            const articles = await this.articleRepository.findByTopicIdsSince(topicIds, yesterday);
+            const articles = await this.getArticlesForPodcast(subscriptions);
 
             if (articles.length === 0) {
                 throw new Error('No recent articles found for user subscriptions');
             }
 
-            // Create podcast record
             const podcast = await this.podcastRepository.create({
                 userId,
-                articles: articles.map(article => article._id as any)
+                articles: articles.map(article => article._id as Types.ObjectId)
             });
 
-            // Generate text content for TTS
-            const podcastText = this.generatePodcastText(articles);
+            await this.podcastRepository.update(podcast._id as Types.ObjectId, {
+                status: PodcastStatus.GENERATING
+            });
 
-            // Generate audio using TTS
-            const audioBuffer = await this.ttsClient.generateAudio(podcastText);
+            const scriptJson = await this.generatePodcastScript(articles);
+            const scriptData = JSON.parse(scriptJson);
+            const { speaker1, speaker2, text } = scriptData;
 
-            // Upload audio file to storage
-            const fileName = `podcast_${userId}_${Date.now()}.mp3`;
+            const audioBuffer = await this.geminiClient.generateAudio(speaker1, speaker2, text);
+
+            const fileName = `podcast_${userId}_${podcast._id}.mp3`;
             const fileUrl = await this.storageClient.upload(audioBuffer, fileName);
 
-            // Update podcast with file URL
             await this.podcastRepository.update(podcast._id as any, {
                 status: 'READY',
                 fileUrl
@@ -80,15 +73,83 @@ export class PodcastService {
         }
     }
 
-    private generatePodcastText(articles: IArticle[]): string {
-        let text = 'Добрий день! Ось ваш щоденний дайджест новин.\n\n';
+    private async getArticlesForPodcast(subscriptions: ISubscription[]): Promise<IArticle[]> {
+        const topicIds = subscriptions.map(sub => sub.topicId);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const articles = await this.articleRepository.findByTopicIdsSince(topicIds, yesterday);
+        
+        return articles;
+    }
 
-        articles.forEach((article, index) => {
-            text += `${index + 1}. ${article.title}\n`;
-            text += `${article.content.substring(0, 200)}...\n\n`;
-        });
+    private async generatePodcastScript(articles: IArticle[]): Promise<string> {
+        const combinedText = articles
+            .map(article => `Заголовок: ${article.title}\nТекст: ${article.content}\nПосилання: ${article.url}\n`)
+            .join('\n\n---\n\n');
 
-        text += 'Дякуємо за прослуховування!';
-        return text;
+        const truncatedText = combinedText.length > 15000 ? combinedText.substring(0, 15000) : combinedText;
+
+        const prompt = `Ти — ведучий новинного подкасту. Створи сценарій для аудіо-дайджесту новин українською мовою на основі наданих статей.
+        Твій текст має бути лаконічним, цікавим і природним для прослуховування.
+
+        Обери випадкові голоси для першого і другого спікера (не повторюйся).
+
+        Структура випуску:
+        1.  **Привітання:** Почни з теплого привітання, наприклад: "Вітаю, з вами щоденний подкаст новин. Давайте подивимось, що цікавого відбулось сьогодні."
+        2.  **Основна частина:** Розкажи про 2-3 найцікавіші статті. Не просто читай, а переказуй ключові моменти своїми словами.
+        3.  **Завершення:** Закінчи подкаст позитивним побажанням та подякою за прослуховування.
+
+        Як має виглядати сценарій:
+        1. Налаштування атмосфери, тону голосу.
+        2. Репліки спікера 1 і спікера 2 у форматі "Speaker1.name: replic"
+        Приклад:
+        Read aloud in a warm, welcoming tone
+        Speaker 1: Hello! We're excited to show you our native speech capabilities
+        Speaker 2: Where you can direct a voice, create realistic dialog, and so much more.
+
+        Повертати результат строго у форматі JSON без зайвих символів:
+        {
+                type: 'object',
+                required: ["speaker1", "speaker2", "text"],
+                properties: {
+                    speaker1: {
+                    type: 'object',
+                    required: ["name", "voice"],
+                    properties: {
+                        name: {
+                        type: 'string',
+                        },
+                        voice: {
+                        type: 'string',
+                        enum: ["Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Autonoe", "Enceladus", "Sulafat", "Sadachbia", "Achird"],
+                        },
+                    },
+                    },
+                    speaker2: {
+                    type: 'object',
+                    required: ["name", "voice"],
+                    properties: {
+                        name: {
+                        type: 'string',
+                        },
+                        voice: {
+                        type: 'string',
+                        enum: ["Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Autonoe", "Enceladus", "Sulafat", "Sadachbia", "Achird"],
+                        },
+                    },
+                    },
+                    text: {
+                    type: 'string',
+                    },
+                },
+        }
+        
+        Ось статті для опрацювання:
+        ---
+        ${truncatedText}
+        ---
+        `;
+
+        return this.geminiClient.generateText(prompt);
     }
 }
