@@ -115,7 +115,6 @@ export class PodcastService {
                     reject(new Error(`FFmpeg error: ${err.message}`));
                 })
                 .on('end', () => {
-                    console.log('Audio conversion completed successfully');
                     const outputBuffer = Buffer.concat(outputBuffers);
                     resolve(outputBuffer);
                 })

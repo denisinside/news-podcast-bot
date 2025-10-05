@@ -45,7 +45,6 @@ export class GeminiClient implements IGeminiClient {
                 throw new Error('Failed to generate text with Gemini API.');
             }
             const text = response.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
-            console.log('response', text);
             return text;
         } catch (error) {
             console.error('Error generating text with Gemini:', error);
