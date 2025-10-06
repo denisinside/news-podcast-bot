@@ -26,6 +26,10 @@ export class SubscriptionRepository implements ISubscriptionRepository {
         return Subscription.findById(id).populate('topicId');
     }
 
+    async findByTopicId(topicId: string): Promise<ISubscription[]> {
+        return Subscription.find({ topicId, isActive: true });
+    }
+
     async findAll(): Promise<ISubscription[]> {
         return Subscription.find().populate('topicId');
     }
