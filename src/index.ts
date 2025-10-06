@@ -3,8 +3,8 @@ import { ConfigService } from "./config/ConfigService";
 import { ICommand } from "./presentation/telegram/commands/ICommand";
 import { IScene } from "./presentation/telegram/scenes/IScene";
 import { SubscribeScene } from "./presentation/telegram/scenes/SubscribeScene";
-//import { UnsubscribeScene } from "./presentation/telegram/scenes/UnsubscribeScene";
-//import { MySubscriptionsScene } from "./presentation/telegram/scenes/MySubscriptionsScene";
+import { UnsubscribeScene } from "./presentation/telegram/scenes/UnsubscribeScene";
+import { MySubscriptionsScene } from "./presentation/telegram/scenes/MySubscriptionsScene";
 import { SettingsScene } from "./presentation/telegram/scenes/SettingsScene";
 import { AdminService, UserService } from "@application/services";
 import { SubscriptionService } from "@application/services";
@@ -17,6 +17,10 @@ import { ArticleRepository } from "./infrastructure/repositories/ArticleReposito
 import { NewsFinderService } from "./application/services/NewsFinderService";
 import { SchedulingService } from "./application/services/SchedulingService";
 import { QueueClient } from "./infrastructure/clients/QueueClient";
+import { PodcastService } from "./application/services/PodcastService";
+import { PodcastRepository } from "./infrastructure/repositories/PodcastRepository";
+import { FileStorageClient } from "./infrastructure/clients/FileStorageClient";
+import { GeminiClient } from "./infrastructure/clients/GeminiClient";
 import { IUserService } from "@application/interfaces";
 
 const config = new ConfigService();
@@ -25,14 +29,17 @@ const userRepository = new UserRepository();
 const topicRepository = new TopicRepository();
 const articleRepository = new ArticleRepository();
 const subscriptionRepository = new SubscriptionRepository();
-
+const podcastRepository = new PodcastRepository();
 const queueClient = new QueueClient();
+const storageClient = new FileStorageClient();  
+const geminiClient = new GeminiClient(config.get('GEMINI_API_KEY'));
 
 const adminService = new AdminService(topicRepository, userRepository);
 const subscriptionService = new SubscriptionService(subscriptionRepository);
 const userSettingsService = new UserSettingsService();
 const newsFinderService = new NewsFinderService(articleRepository, topicRepository);
 const schedulingService = new SchedulingService(userRepository, subscriptionRepository, queueClient, newsFinderService);
+const podcastService = new PodcastService(podcastRepository, articleRepository, subscriptionRepository, storageClient, geminiClient);
 const userService: IUserService = new UserService(userRepository);
 
 const commands: ICommand[] = [];
@@ -40,8 +47,8 @@ const commands: ICommand[] = [];
 const scenes: IScene[] = [
     new StartScene(adminService, subscriptionService, userService),
     new SubscribeScene(adminService, subscriptionService),
-    //new UnsubscribeScene(adminService, subscriptionService),
-    //new MySubscriptionsScene(adminService, subscriptionService),
+    new UnsubscribeScene(adminService, subscriptionService),
+    new MySubscriptionsScene(adminService, subscriptionService),
     new SettingsScene(userSettingsService)
 ];
 

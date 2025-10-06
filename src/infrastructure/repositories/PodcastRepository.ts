@@ -3,7 +3,7 @@ import { IPodcastRepository } from './IPodcastRepository';
 import { Types } from 'mongoose';
 
 export class PodcastRepository implements IPodcastRepository {
-    async create(data: { userId: String; articles: Types.ObjectId[] }): Promise<IPodcast> {
+    async create(data: { userId: string; articles: Types.ObjectId[] }): Promise<IPodcast> {
         const podcast = new Podcast(data);
         return await podcast.save();
     }
@@ -16,8 +16,8 @@ export class PodcastRepository implements IPodcastRepository {
         return Podcast.findById(id).populate('articles');
     }
 
-    async findByUserId(userId: Types.ObjectId): Promise<IPodcast[]> {
-        return Podcast.find({ userId }).populate('articles').sort({ creationDate: -1 });
+    async findByUserId(userId: string): Promise<IPodcast[]> {
+        return await Podcast.find({ userId }).populate('articles').sort({ creationDate: -1 });
     }
 
     async findAll(): Promise<IPodcast[]> {
