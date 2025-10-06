@@ -1,29 +1,25 @@
 import { IUser } from '@models/User';
 import { IUserRepository } from '@infrastructure/repositories/IUserRepository';
 import { Context } from 'telegraf';
+import {IUserService} from "@application/interfaces";
 
-export class UserService {
+export class UserService implements IUserService {
     private userRepository: IUserRepository;
 
     constructor(userRepository: IUserRepository) {
         this.userRepository = userRepository;
     }
 
-    async findOrCreate(ctx: Context): Promise<IUser> {
-        const telegramId = ctx.from?.id;
-        const username = ctx.from?.username;
+    async findOrCreateUser(telegramId: string, username: string): Promise<IUser>{
 
         if (!telegramId) {
             throw new Error('Telegram ID is required');
         }
+        let user = await this.userRepository.findById(telegramId);
 
-        // Try to find existing user
-        let user = await this.userRepository.findByTelegramId(telegramId);
-
-        // Create new user if not found
         if (!user) {
             user = await this.userRepository.create({
-                telegramId,
+                _id:telegramId,
                 username,
                 createdAt: new Date()
             });
@@ -37,13 +33,9 @@ export class UserService {
         return await this.userRepository.findById(id);
     }
 
-    async findByTelegramId(telegramId: number): Promise<IUser | null> {
-        return await this.userRepository.findByTelegramId(telegramId);
-    }
-
-    async createUser(telegramId: number, username?: string): Promise<IUser> {
+    async createUser(telegramId: string, username?: string): Promise<IUser> {
         return await this.userRepository.create({
-            telegramId,
+            _id: telegramId,
             username,
             createdAt: new Date()
         });

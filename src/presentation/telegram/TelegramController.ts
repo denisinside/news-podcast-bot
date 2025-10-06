@@ -12,11 +12,10 @@ export class TelegramController {
         private readonly commands: ICommand[],
         private scenes: IScene[] = []
     ) {
-        this.stage = new Scenes.Stage<any>(
+        this.stage = new Scenes.Stage<IBotContext>(
             this.scenes.map(scene => scene.getScene())
         );
     }
-
 
     public init() {
         this.bot.use(this.stage.middleware());

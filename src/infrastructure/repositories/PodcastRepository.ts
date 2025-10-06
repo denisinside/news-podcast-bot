@@ -9,11 +9,11 @@ export class PodcastRepository implements IPodcastRepository {
     }
 
     async update(id: Types.ObjectId, data: { status?: string; fileUrl?: string }): Promise<IPodcast | null> {
-        return await Podcast.findByIdAndUpdate(id, data, { new: true });
+        return Podcast.findByIdAndUpdate(id, data, { new: true });
     }
 
     async findById(id: string): Promise<IPodcast | null> {
-        return await Podcast.findById(id).populate('articles');
+        return Podcast.findById(id).populate('articles');
     }
 
     async findByUserId(userId: string): Promise<IPodcast[]> {
@@ -21,7 +21,7 @@ export class PodcastRepository implements IPodcastRepository {
     }
 
     async findAll(): Promise<IPodcast[]> {
-        return await Podcast.find().populate('articles').sort({ creationDate: -1 });
+        return Podcast.find().populate('articles').sort({ creationDate: -1 });
     }
 
     async delete(id: string): Promise<boolean> {
