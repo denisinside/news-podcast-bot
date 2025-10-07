@@ -1,7 +1,6 @@
 import { IUser } from '@models/User';
 import { IUserRepository } from '@infrastructure/repositories/IUserRepository';
-import { Context } from 'telegraf';
-import {IUserService} from "@application/interfaces";
+import { IUserService } from "@application/interfaces";
 
 export class UserService implements IUserService {
     private userRepository: IUserRepository;
@@ -11,7 +10,6 @@ export class UserService implements IUserService {
     }
 
     async findOrCreateUser(telegramId: string, username: string): Promise<IUser>{
-
         if (!telegramId) {
             throw new Error('Telegram ID is required');
         }
@@ -21,7 +19,6 @@ export class UserService implements IUserService {
             user = await this.userRepository.create({
                 _id:telegramId,
                 username,
-                createdAt: new Date()
             });
             console.log(`Created new user: ${telegramId}`);
         }

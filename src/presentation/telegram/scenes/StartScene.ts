@@ -5,8 +5,7 @@ import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
 import { ISubscriptionService } from "@application/interfaces/ISubscriptionService";
 import { IUserService } from "@application/interfaces";
-import {IUser} from "@/models";
-import {Types} from "mongoose";
+import { IUser } from "@/models";
 
 export class StartScene implements IScene {
     private readonly scene: Scenes.BaseScene<IBotContext>;
@@ -138,7 +137,6 @@ export class StartScene implements IScene {
         this.scene.action("settings", async (ctx) => {
             try {
                 console.log("Settings button clicked in StartScene");
-                console.log(ctx);
                 await ctx.answerCbQuery();
                 await ctx.scene.enter("settings");
             } catch (error) {
