@@ -44,7 +44,7 @@ export class UnsubscribeScene implements IScene {
 
                 const allTopics = await this.adminService.getAllTopics();
                 const subscribedTopics = allTopics.filter(topic =>
-                    subscriptions.some(sub => sub.topicId === topic.id)
+                    subscriptions.some(sub => String(sub.topicId._id) === topic.id)
                 );
 
                 if (subscribedTopics.length === 0) {

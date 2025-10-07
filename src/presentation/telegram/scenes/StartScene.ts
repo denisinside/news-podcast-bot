@@ -54,11 +54,9 @@ export class StartScene implements IScene {
                     if (subscriptions.length > 0) {
                         // Get all topics to match names
                         const allTopics = await this.adminService.getAllTopics();
-                        console.log("All Topics:", allTopics);
                         const subscribedTopics = allTopics.filter(topic =>
                             subscriptions.some(sub => sub.topicId === topic.id)
                         );
-                        console.log("All Topics:", allTopics);
 
                         if (subscribedTopics.length > 0) {
                             subscriptionsText = "\n\n*📋 Ваші поточні підписки:*\n" +
