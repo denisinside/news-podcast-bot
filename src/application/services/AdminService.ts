@@ -93,12 +93,14 @@ export class AdminService implements IAdminService {
 
         const blockedUsers = allUsers.filter(u => u.isBlocked).length;
         const adminUsers = allUsers.filter(u => u.role === UserRole.ADMIN).length;
+        const ownerUsers = allUsers.filter(u => u.role === UserRole.OWNER).length;
 
         return {
             totalUsers: allUsers.length,
             activeUsers,
             blockedUsers,
             adminUsers,
+            ownerUsers,
             newUsersToday,
             newUsersWeek,
             newUsersMonth

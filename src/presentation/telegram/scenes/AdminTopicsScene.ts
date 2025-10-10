@@ -212,7 +212,7 @@ export class AdminTopicsScene implements IScene {
                         await this.showTopicsList(ctx);
                     } catch (error) {
                         console.log("Error creating topic:", error);
-                        await ctx.reply("❌ Помилка при створенні топіку. Можливо, такий URL вже існує.");
+                        await ctx.reply("❌ Помилка при створенні топіку. Можливо, такий URL вже існує. Надішліть валідний URL.");
                     }
                 }
             } else if (sessionData.action === 'edit') {

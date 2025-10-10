@@ -9,6 +9,7 @@ export interface UserStatistics {
     activeUsers: number;
     blockedUsers: number;
     adminUsers: number;
+    ownerUsers: number;
     newUsersToday: number;
     newUsersWeek: number;
     newUsersMonth: number;

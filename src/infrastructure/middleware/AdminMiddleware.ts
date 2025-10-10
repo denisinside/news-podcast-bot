@@ -5,13 +5,22 @@ import { UserRole } from '@models/User';
 export class AdminMiddleware {
     constructor(private readonly userRepository: IUserRepository) {}
 
-    // Check if user is admin
+    // Check if user is admin (ADMIN or OWNER)
     async isAdmin(ctx: IBotContext): Promise<boolean> {
         const userId = String(ctx.from?.id);
         if (!userId) return false;
 
         const user = await this.userRepository.findById(userId);
-        return user?.role === UserRole.ADMIN && !user?.isBlocked;
+        return (user?.role === UserRole.ADMIN || user?.role === UserRole.OWNER) && !user?.isBlocked;
+    }
+
+    // Check if user is owner (super admin)
+    async isOwner(ctx: IBotContext): Promise<boolean> {
+        const userId = String(ctx.from?.id);
+        if (!userId) return false;
+
+        const user = await this.userRepository.findById(userId);
+        return user?.role === UserRole.OWNER && !user?.isBlocked;
     }
 
     // Middleware function for admin routes

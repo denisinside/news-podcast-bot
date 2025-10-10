@@ -80,9 +80,10 @@ export class StartScene implements IScene {
                 [Markup.button.callback("ℹ️ Допомога", "help")]
             ];
 
-            // Add admin button if user is admin
-            if (user.role === UserRole.ADMIN) {
-                buttons.splice(4, 0, [Markup.button.callback("👑 Адмін-панель", "admin_panel")]);
+            // Add admin button if user is admin or owner
+            if (user.role === UserRole.ADMIN || user.role === UserRole.OWNER) {
+                const adminIcon = user.role === UserRole.OWNER ? '🔱' : '👑';
+                buttons.splice(4, 0, [Markup.button.callback(`${adminIcon} Адмін-панель`, "admin_panel")]);
             }
 
             await ctx.reply(

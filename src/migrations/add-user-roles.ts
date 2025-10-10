@@ -8,7 +8,20 @@ import { ConfigService } from '../config/ConfigService';
 async function migrateUserRoles() {
     const config = new ConfigService();
     const mongoUri = config.get('MONGO_URI');
-    const adminIds = config.get('ADMIN_IDS')?.split(',').map(id => id.trim()) || [];
+    
+    // Get owner ID (first admin from ADMIN_IDS or separate OWNER_ID)
+    let ownerId: string | undefined;
+    try {
+        ownerId = config.get('OWNER_ID');
+    } catch {
+        // If OWNER_ID not set, use first ADMIN_ID as owner
+        const adminIds = config.get('ADMIN_IDS')?.split(',').map(id => id.trim()) || [];
+        if (adminIds.length > 0) {
+            ownerId = adminIds[0];
+        }
+    }
+    
+    const adminIds = config.get('ADMIN_IDS')?.split(',').map(id => id.trim()).filter(id => id !== ownerId) || [];
 
     const client = new MongoClient(mongoUri);
 
@@ -32,14 +45,25 @@ async function migrateUserRoles() {
 
         console.log(`Updated ${updateResult.modifiedCount} users with default role`);
 
-        // Set admin role for specified admin IDs
+        // Set OWNER role for the main admin
+        if (ownerId) {
+            const ownerUpdateResult = await usersCollection.updateMany(
+                { _id: { $in: [ownerId] } } as any,
+                { $set: { role: 'OWNER', isBlocked: false } }
+            );
+
+            console.log(`Set OWNER role for ${ownerUpdateResult.modifiedCount} user(s)`);
+            console.log(`Owner ID: ${ownerId}`);
+        }
+
+        // Set admin role for other specified admin IDs
         if (adminIds.length > 0) {
             const adminUpdateResult = await usersCollection.updateMany(
                 { _id: { $in: adminIds } } as any,
-                { $set: { role: 'ADMIN' } }
+                { $set: { role: 'ADMIN', isBlocked: false } }
             );
 
-            console.log(`Set ADMIN role for ${adminUpdateResult.modifiedCount} users`);
+            console.log(`Set ADMIN role for ${adminUpdateResult.modifiedCount} user(s)`);
             console.log(`Admin IDs: ${adminIds.join(', ')}`);
         }
 

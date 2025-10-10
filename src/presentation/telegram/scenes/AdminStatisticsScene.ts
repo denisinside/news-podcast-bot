@@ -55,6 +55,7 @@ export class AdminStatisticsScene implements IScene {
                     `📊 Всього користувачів: *${stats.totalUsers}*\n` +
                     `✅ Активних: *${stats.activeUsers}*\n` +
                     `🚫 Заблокованих: *${stats.blockedUsers}*\n` +
+                    `🔱 Власників: *${stats.ownerUsers}*\n` +
                     `👑 Адміністраторів: *${stats.adminUsers}*\n\n` +
                     `📈 *Нові користувачі:*\n` +
                     `• За сьогодні: *${stats.newUsersToday}*\n` +
