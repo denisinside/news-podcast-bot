@@ -5,7 +5,7 @@ import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
 import { ISubscriptionService } from "@application/interfaces/ISubscriptionService";
 import { IUserService } from "@application/interfaces";
-import {IUser} from "@/models";
+import {IUser, UserRole} from "@/models";
 import {Types} from "mongoose";
 
 export class StartScene implements IScene {
@@ -37,6 +37,12 @@ export class StartScene implements IScene {
             const username = String(ctx.from?.first_name);
 
             const user: IUser = await this.userService.findOrCreateUser(tgId, username);
+            
+            // Check if user is blocked
+            if (user.isBlocked) {
+                await ctx.reply("🚫 Ваш акаунт заблоковано. Зверніться до адміністратора.");
+                return;
+            }
 
             let subscriptionsText = "";
 
@@ -65,6 +71,21 @@ export class StartScene implements IScene {
                 }
             }
 
+            // Build button layout based on user role
+            const buttons = [
+                [Markup.button.callback("📝 Підписатися на теми", "subscribe")],
+                [Markup.button.callback("📋 Мої підписки", "my_subscriptions")],
+                [Markup.button.callback("❌ Відписатися", "unsubscribe")],
+                [Markup.button.callback("⚙️ Налаштування", "settings")],
+                [Markup.button.callback("ℹ️ Допомога", "help")]
+            ];
+
+            // Add admin button if user is admin or owner
+            if (user.role === UserRole.ADMIN || user.role === UserRole.OWNER) {
+                const adminIcon = user.role === UserRole.OWNER ? '🔱' : '👑';
+                buttons.splice(4, 0, [Markup.button.callback(`${adminIcon} Адмін-панель`, "admin_panel")]);
+            }
+
             await ctx.reply(
                 "🎧 *Ласкаво просимо до News Podcast Bot!*\n\n" +
                 "Я допоможу вам залишатися в курсі подій та отримувати персоналізовані новини у вигляді подкастів.\n\n" +
@@ -77,13 +98,7 @@ export class StartScene implements IScene {
                 "*🚀 Почніть з підписки на цікаві теми!*",
                 {
                     parse_mode: 'Markdown',
-                    reply_markup: Markup.inlineKeyboard([
-                        [Markup.button.callback("📝 Підписатися на теми", "subscribe")],
-                        [Markup.button.callback("📋 Мої підписки", "my_subscriptions")],
-                        [Markup.button.callback("❌ Відписатися", "unsubscribe")],
-                        [Markup.button.callback("⚙️ Налаштування", "settings")],
-                        [Markup.button.callback("ℹ️ Допомога", "help")]
-                    ]).reply_markup
+                    reply_markup: Markup.inlineKeyboard(buttons).reply_markup
                 }
             );
             console.log("StartScene message sent");
@@ -199,6 +214,21 @@ export class StartScene implements IScene {
                     await ctx.scene.reenter();
                 } catch (sceneError) {
                     console.log("Scene reenter error:", sceneError);
+                }
+            }
+        });
+
+        this.scene.action("admin_panel", async (ctx) => {
+            try {
+                console.log("Admin panel button clicked");
+                await ctx.answerCbQuery();
+                await ctx.scene.enter("admin_menu");
+            } catch (error) {
+                console.log("Callback query error (admin_panel):", error);
+                try {
+                    await ctx.scene.enter("admin_menu");
+                } catch (sceneError) {
+                    console.log("Scene enter error:", sceneError);
                 }
             }
         });

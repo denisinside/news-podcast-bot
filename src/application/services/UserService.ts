@@ -1,4 +1,4 @@
-import { IUser } from '@models/User';
+import { IUser, UserRole } from '@models/User';
 import { IUserRepository } from '@infrastructure/repositories/IUserRepository';
 import { Context } from 'telegraf';
 import {IUserService} from "@application/interfaces";
@@ -21,6 +21,8 @@ export class UserService implements IUserService {
             user = await this.userRepository.create({
                 _id:telegramId,
                 username,
+                role: UserRole.USER,
+                isBlocked: false,
                 createdAt: new Date()
             });
             console.log(`Created new user: ${telegramId}`);
@@ -37,6 +39,8 @@ export class UserService implements IUserService {
         return await this.userRepository.create({
             _id: telegramId,
             username,
+            role: UserRole.USER,
+            isBlocked: false,
             createdAt: new Date()
         });
     }

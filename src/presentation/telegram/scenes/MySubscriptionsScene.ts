@@ -42,17 +42,23 @@ export class MySubscriptionsScene implements IScene {
                     return;
                 }
 
+                // Filter out subscriptions with deleted topics (topicId is null)
+                const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
+                
                 const allTopics = await this.adminService.getAllTopics();
                 const subscribedTopics = allTopics.filter(topic =>
-                    subscriptions.some(sub => String(sub.topicId._id) === topic.id)
+                    validSubscriptions.some(sub => String(sub.topicId._id) === topic.id)
                 );
 
                 if (subscribedTopics.length === 0) {
                     await ctx.reply(
-                        "❌ *Не вдалося знайти інформацію про ваші підписки.*",
+                        "📭 *У вас немає активних підписок.*\n\n" +
+                        "Можливо, деякі теми були видалені адміністратором.\n\n" +
+                        "Підпишіться на нові теми, щоб отримувати новини!",
                         {
                             parse_mode: 'Markdown',
                             reply_markup: Markup.inlineKeyboard([
+                                [Markup.button.callback("📝 Підписатися на теми", "subscribe")],
                                 [Markup.button.callback("🏠 Головне меню", "back_to_start")]
                             ]).reply_markup
                         }
