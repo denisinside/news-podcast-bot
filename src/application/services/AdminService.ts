@@ -54,6 +54,28 @@ export class AdminService implements IAdminService {
         return await this.topicRepository.delete(id);
     }
 
+    async deleteTopicWithSubscriptions(id: string): Promise<{ success: boolean; subscribersCount: number; subscriberIds: string[] }> {
+        // Get all subscriptions for this topic before deleting
+        const subscriptions = await this.subscriptionRepository.findByTopicId(id);
+        const subscriberIds = [...new Set(subscriptions.map(sub => sub.userId))]; // unique user IDs
+        
+        // Delete the topic
+        const topicDeleted = await this.topicRepository.delete(id);
+        
+        if (!topicDeleted) {
+            return { success: false, subscribersCount: 0, subscriberIds: [] };
+        }
+        
+        // Note: Subscriptions with deleted topicId will remain in DB but filtered out in queries
+        // This is intentional - we keep subscription history
+        
+        return {
+            success: true,
+            subscribersCount: subscriberIds.length,
+            subscriberIds
+        };
+    }
+
     // ==================== USER MANAGEMENT ====================
     
     async getAllUsers(): Promise<IUser[]> {

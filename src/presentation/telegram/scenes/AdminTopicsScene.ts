@@ -1,5 +1,5 @@
 import { IScene } from "./IScene";
-import { Markup, Scenes } from "telegraf";
+import { Markup, Scenes, Telegraf } from "telegraf";
 import { IBotContext } from "@context/IBotContext";
 import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
@@ -18,7 +18,8 @@ export class AdminTopicsScene implements IScene {
 
     constructor(
         private readonly adminService: IAdminService,
-        private readonly adminMiddleware: AdminMiddleware
+        private readonly adminMiddleware: AdminMiddleware,
+        private readonly bot: Telegraf<IBotContext>
     ) {
         this.scene = new BaseScene<IBotContext>(this.name);
         this.registerHandlers();
@@ -159,10 +160,55 @@ export class AdminTopicsScene implements IScene {
                 await ctx.answerCbQuery();
                 const topicId = ctx.match[1];
 
-                const result = await this.adminService.deleteTopic(topicId);
+                // Get topic name before deletion
+                const topics = await this.adminService.getAllTopics();
+                const topic = topics.find(t => String(t._id) === topicId);
+                const topicName = topic?.name || 'невідома тема';
+
+                // Delete topic and get subscribers
+                const result = await this.adminService.deleteTopicWithSubscriptions(topicId);
                 
-                if (result) {
-                    await ctx.reply("✅ Топік успішно видалено!");
+                if (result.success) {
+                    await ctx.reply(
+                        `✅ *Топік успішно видалено!*\n\n` +
+                        `📰 Тема: *${topicName}*\n` +
+                        `👥 Підписників: ${result.subscribersCount}\n\n` +
+                        (result.subscribersCount > 0 ? `📨 Надсилаємо повідомлення підписникам...` : ''),
+                        { parse_mode: 'Markdown' }
+                    );
+
+                    // Notify all subscribers
+                    if (result.subscriberIds.length > 0) {
+                        let successCount = 0;
+                        let failCount = 0;
+
+                        for (const userId of result.subscriberIds) {
+                            try {
+                                await this.bot.telegram.sendMessage(
+                                    userId,
+                                    `⚠️ *Тему видалено*\n\n` +
+                                    `Адміністратор видалив тему "*${topicName}*", на яку ви були підписані.\n\n` +
+                                    `Ви більше не отримуватимете новини з цього джерела.\n\n` +
+                                    `💡 Підпишіться на інші теми через головне меню!`,
+                                    { parse_mode: 'Markdown' }
+                                );
+                                successCount++;
+                            } catch (error) {
+                                failCount++;
+                                console.log(`Failed to notify user ${userId}:`, error);
+                            }
+                            
+                            // Small delay to avoid rate limits
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                        }
+
+                        await ctx.reply(
+                            `📊 *Результати розсилки:*\n` +
+                            `✅ Надіслано: ${successCount}\n` +
+                            `❌ Помилок: ${failCount}`,
+                            { parse_mode: 'Markdown' }
+                        );
+                    }
                 } else {
                     await ctx.reply("❌ Помилка при видаленні топіку.");
                 }

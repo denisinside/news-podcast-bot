@@ -36,6 +36,7 @@ export interface IAdminService {
     createTopic(name: string, sourceUrl: string): Promise<ITopic>;
     updateTopic(id: string, data: Partial<ITopic>): Promise<ITopic | null>;
     deleteTopic(id: string): Promise<boolean>;
+    deleteTopicWithSubscriptions(id: string): Promise<{ success: boolean; subscribersCount: number; subscriberIds: string[] }>;
     
     // User management
     getAllUsers(): Promise<IUser[]>;

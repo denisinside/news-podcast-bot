@@ -123,7 +123,10 @@ export class PodcastService {
     }
 
     private async getArticlesForPodcast(subscriptions: ISubscription[]): Promise<IArticle[]> {
-        const topicIds = subscriptions.map(sub => sub.topicId);
+        // Filter out subscriptions with deleted topics
+        const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
+        const topicIds = validSubscriptions.map(sub => sub.topicId);
+        
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const articles = await this.articleRepository.findByTopicIdsSince(topicIds, yesterday);
