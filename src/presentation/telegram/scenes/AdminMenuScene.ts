@@ -40,6 +40,7 @@ export class AdminMenuScene implements IScene {
                         [Markup.button.callback("📊 Статистика", "admin_statistics")],
                         [Markup.button.callback("👥 Керування користувачами", "admin_users")],
                         [Markup.button.callback("📢 Розсилка повідомлень", "admin_broadcast")],
+                        [Markup.button.callback("🔄 Запустити парсинг новин", "trigger_news_parsing")],
                         [Markup.button.callback("🔙 Назад до головного меню", "back_to_start")]
                     ]).reply_markup
                 }
@@ -79,6 +80,26 @@ export class AdminMenuScene implements IScene {
                 await ctx.scene.enter("admin_broadcast");
             } catch (error) {
                 console.log("Error entering admin_broadcast scene:", error);
+            }
+        });
+
+        this.scene.action("trigger_news_parsing", async (ctx) => {
+            try {
+                await ctx.answerCbQuery("🔄 Запускаю парсинг новин...");
+                
+                const result = await this.adminService.triggerNewsParsing();
+                
+                if (result.success) {
+                    await ctx.reply(`✅ ${result.message}`);
+                } else {
+                    await ctx.reply(`❌ ${result.message}`);
+                }
+                
+                // Return to admin menu
+                await ctx.scene.reenter();
+            } catch (error) {
+                console.log("Error triggering news parsing:", error);
+                await ctx.reply("❌ Помилка при запуску парсингу новин.");
             }
         });
 

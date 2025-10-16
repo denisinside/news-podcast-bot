@@ -10,6 +10,7 @@ import { IGeminiClient } from '@infrastructure/clients/IGeminiClient';
 import ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import { Readable, Writable } from 'stream';
+import { INotificationService } from '../interfaces/INotificationService';
 
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
@@ -19,6 +20,7 @@ export class PodcastService {
     private subscriptionRepository: ISubscriptionRepository;
     private storageClient: IFileStorageClient;
     private geminiClient: IGeminiClient;
+    private notificationService?: INotificationService;
 
     constructor(
         podcastRepository: IPodcastRepository,
@@ -32,6 +34,10 @@ export class PodcastService {
         this.subscriptionRepository = subscriptionRepository;
         this.storageClient = storageClient;
         this.geminiClient = geminiClient;
+    }
+
+    setNotificationService(notificationService: INotificationService): void {
+        this.notificationService = notificationService;
     }
 
     async generateForUser(userId: string): Promise<string> {
@@ -72,6 +78,25 @@ export class PodcastService {
                 status: 'READY',
                 fileUrl
             });
+
+            // Send podcast notification to user
+            if (this.notificationService) {
+                try {
+                    // Get topic names for the podcast
+                    const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
+                    const topicNames = validSubscriptions.map(sub => (sub.topicId as any).name || 'Невідома тема');
+                    
+                    const result = await this.notificationService.sendPodcastToUser(userId, fileUrl, topicNames);
+                    
+                    if (result.success) {
+                        console.log(`Podcast notification sent successfully to user ${userId}`);
+                    } else {
+                        console.warn(`Failed to send podcast notification to user ${userId}: ${result.error}`);
+                    }
+                } catch (notificationError) {
+                    console.error(`Error sending podcast notification to user ${userId}:`, notificationError);
+                }
+            }
 
             return fileUrl;
         } catch (error) {

@@ -28,6 +28,8 @@ import { FileStorageClient } from "./infrastructure/clients/FileStorageClient";
 import { GeminiClient } from "./infrastructure/clients/GeminiClient";
 import { IUserService } from "@application/interfaces";
 import { AdminMiddleware } from '@infrastructure/middleware/AdminMiddleware';
+import { MessageTemplateService } from './application/services/MessageTemplateService';
+import { NotificationService } from './application/services/NotificationService';
 
 const config = new ConfigService();
 
@@ -40,18 +42,26 @@ const queueClient = new QueueClient();
 const storageClient = new FileStorageClient();  
 const geminiClient = new GeminiClient(config.get('GEMINI_API_KEY'));
 
-const adminService = new AdminService(topicRepository, userRepository, subscriptionRepository, podcastRepository);
+const newsFinderService = new NewsFinderService(articleRepository, topicRepository);
+const adminService = new AdminService(topicRepository, userRepository, subscriptionRepository, podcastRepository, articleRepository, newsFinderService);
 const subscriptionService = new SubscriptionService(subscriptionRepository);
 const userSettingsService = new UserSettingsService();
-const newsFinderService = new NewsFinderService(articleRepository, topicRepository);
 const schedulingService = new SchedulingService(userRepository, subscriptionRepository, queueClient, newsFinderService);
 const podcastService = new PodcastService(podcastRepository, articleRepository, subscriptionRepository, storageClient, geminiClient);
 const userService: IUserService = new UserService(userRepository);
 const adminMiddleware = new AdminMiddleware(userRepository);
 
 const commands: ICommand[] = [];
-
 const bot = new NewsPodcastBot(config, commands, []);
+
+// Initialize notification services
+const messageTemplateService = new MessageTemplateService();
+const notificationService = new NotificationService(bot.bot, subscriptionRepository, messageTemplateService);
+
+// Set notification service in other services
+newsFinderService.setNotificationService(notificationService);
+podcastService.setNotificationService(notificationService);
+notificationService.setPodcastService(podcastService);
 
 const scenes: IScene[] = [
     new StartScene(adminService, subscriptionService, userService),
@@ -62,8 +72,8 @@ const scenes: IScene[] = [
     new AdminMenuScene(adminService, adminMiddleware),
     new AdminTopicsScene(adminService, adminMiddleware, bot.bot),
     new AdminStatisticsScene(adminService, adminMiddleware),
-    new AdminUsersScene(adminService, adminMiddleware),
-    new AdminBroadcastScene(adminService, adminMiddleware, bot.bot)
+    new AdminUsersScene(adminService, adminMiddleware, notificationService),
+    new AdminBroadcastScene(adminService, adminMiddleware, bot.bot, notificationService)
 ];
 
 bot.scenes = scenes;

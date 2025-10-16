@@ -1,4 +1,4 @@
-import { ITopic, IUser } from "../../models";
+import { ITopic, IUser, IArticle, ISubscription } from "../../models";
 
 export interface TopicWithSubscribers extends ITopic {
     subscribersCount?: number;
@@ -44,6 +44,13 @@ export interface IAdminService {
     blockUser(id: string): Promise<IUser | null>;
     unblockUser(id: string): Promise<IUser | null>;
     setUserRole(id: string, role: string): Promise<IUser | null>;
+    
+    // Content management
+    getUserSubscriptions(userId: string): Promise<ISubscription[]>;
+    getRecentArticlesByTopics(topicIds: string[], limit: number): Promise<IArticle[]>;
+    
+    // News parsing
+    triggerNewsParsing(): Promise<{ success: boolean; message: string }>;
     
     // Statistics
     getUserStatistics(): Promise<UserStatistics>;
