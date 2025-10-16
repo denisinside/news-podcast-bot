@@ -1,4 +1,4 @@
-export { User, IUser } from './User';
+export { User, IUser, UserRole } from './User';
 export { Topic, ITopic } from './Topic';
 export { Subscription, ISubscription } from './Subscription';
 export { Article, IArticle } from './Article';

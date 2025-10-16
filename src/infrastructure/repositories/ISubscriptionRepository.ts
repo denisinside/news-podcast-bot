@@ -6,6 +6,7 @@ export interface ISubscriptionRepository {
     delete(userId: string, topicId: Types.ObjectId): Promise<boolean>;
     exists(userId: string, topicId: Types.ObjectId): Promise<boolean>;
     findByUserId(id: string): Promise<ISubscription[]>;
+    findByTopicId(topicId: string): Promise<ISubscription[]>;
     findAll(): Promise<ISubscription[]>;
     update(id: string, updateData: Partial<ISubscription>): Promise<ISubscription | null>;
 }

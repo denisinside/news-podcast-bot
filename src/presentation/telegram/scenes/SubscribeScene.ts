@@ -45,9 +45,10 @@ export class SubscribeScene implements IScene{
                     return;
                 }
 
-                // Get user's current subscriptions
+                // Get user's current subscriptions (filter out deleted topics)
                 const userSubscriptions = await this.subscriptionService.getUserSubscriptions(String(ctx.from!.id));
-                const subscribedTopicIds = userSubscriptions.map(sub => String(sub.topicId._id));
+                const validSubscriptions = userSubscriptions.filter(sub => sub.topicId !== null);
+                const subscribedTopicIds = validSubscriptions.map(sub => String(sub.topicId._id));
 
                 // Filter out topics user is already subscribed to
                 const availableTopics = allTopics.filter(topic => !subscribedTopicIds.includes(topic.id));

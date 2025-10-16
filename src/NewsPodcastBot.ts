@@ -12,12 +12,14 @@ export class NewsPodcastBot {
     mongoDb: MongoDbService;
     bot: Telegraf<IBotContext>;
     private controller: TelegramController;
+    public scenes: IScene[];
 
 
     constructor(private readonly configService: IConfigService,
                 private readonly commands: ICommand[],
-                private readonly scenes: IScene[]) {
+                scenes: IScene[]) {
         this.bot = new Telegraf<IBotContext>(this.configService.get('TELEGRAM_BOT_TOKEN'));
+        this.scenes = scenes;
 
         this.mongoDb = new MongoDbService(this.configService);
 

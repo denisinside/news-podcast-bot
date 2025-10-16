@@ -3,8 +3,7 @@ import { IUserRepository } from './IUserRepository';
 
 export class UserRepository implements IUserRepository {
     async findByTelegramId(telegramId: number): Promise<IUser | null> {
-        const users = await User.find();
-        return users[0];
+        return await User.findById(String(telegramId));
     }
 
     async create(userData: Partial<IUser>): Promise<IUser> {
@@ -27,5 +26,27 @@ export class UserRepository implements IUserRepository {
 
     async findAll(): Promise<IUser[]> {
         return await User.find();
+    }
+
+    async findByRole(role: string): Promise<IUser[]> {
+        return await User.find({ role });
+    }
+
+    async blockUser(id: string): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(id, { isBlocked: true }, { new: true });
+    }
+
+    async unblockUser(id: string): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(id, { isBlocked: false }, { new: true });
+    }
+
+    async countActiveUsers(): Promise<number> {
+        return await User.countDocuments({ isBlocked: false });
+    }
+
+    async countNewUsers(since: Date): Promise<number> {
+        return await User.countDocuments({
+            createdAt: { $gte: since }
+        });
     }
 }
