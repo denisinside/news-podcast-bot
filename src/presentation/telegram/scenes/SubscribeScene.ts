@@ -6,6 +6,7 @@ import { ITopic } from "../../../models";
 import { IAdminService } from "../../../application/interfaces/IAdminService";
 import { ISubscriptionService } from "../../../application/interfaces/ISubscriptionService";
 import {Types} from "mongoose";
+import {QueueManager} from "@infrastructure/managers/QueueManager";
 
 export class SubscribeScene implements IScene{
     private readonly scene: Scenes.BaseScene<IBotContext>;
@@ -13,7 +14,8 @@ export class SubscribeScene implements IScene{
 
     constructor(
         private readonly adminService: IAdminService,
-        private readonly subscriptionService: ISubscriptionService
+        private readonly subscriptionService: ISubscriptionService,
+        private readonly queueManager: QueueManager,
     ) {
         this.scene = new Scenes.BaseScene<IBotContext>(this.name);
         this.registerHandlers();
