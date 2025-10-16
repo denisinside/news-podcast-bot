@@ -5,6 +5,7 @@ import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
 import { AdminMiddleware } from "@infrastructure/middleware/AdminMiddleware";
 import { UserRole } from "@models/User";
+import { INotificationService } from "@application/interfaces/INotificationService";
 
 interface SessionData {
     action?: 'view' | 'block' | 'unblock' | 'set_admin' | 'remove_admin';
@@ -19,7 +20,8 @@ export class AdminUsersScene implements IScene {
 
     constructor(
         private readonly adminService: IAdminService,
-        private readonly adminMiddleware: AdminMiddleware
+        private readonly adminMiddleware: AdminMiddleware,
+        private readonly notificationService: INotificationService
     ) {
         this.scene = new BaseScene<IBotContext>(this.name);
         this.registerHandlers();
@@ -242,6 +244,79 @@ export class AdminUsersScene implements IScene {
             }
         });
 
+        this.scene.action(/^send_content_(.+)$/, async (ctx) => {
+            try {
+                const userId = ctx.match[1];
+                await ctx.answerCbQuery();
+                await this.showContentTypeSelection(ctx, userId);
+            } catch (error) {
+                console.log("Error showing content type selection:", error);
+                await ctx.reply("❌ Помилка при відображенні опцій.");
+            }
+        });
+
+        this.scene.action(/^send_news_(.+)$/, async (ctx) => {
+            try {
+                const userId = ctx.match[1];
+                await ctx.answerCbQuery("📰 Надсилаю новини...");
+                await this.sendNewsToUser(ctx, userId);
+            } catch (error) {
+                console.log("Error sending news:", error);
+                await ctx.reply("❌ Помилка при надсиланні новин.");
+            }
+        });
+
+        this.scene.action(/^send_podcast_(.+)$/, async (ctx) => {
+            try {
+                const userId = ctx.match[1];
+                await ctx.answerCbQuery("🎙️ Генерую подкаст...");
+                await this.sendPodcastToUser(ctx, userId);
+            } catch (error) {
+                console.log("Error sending podcast:", error);
+                await ctx.reply("❌ Помилка при надсиланні подкасту.");
+            }
+        });
+
+        this.scene.action(/^send_test_(.+)$/, async (ctx) => {
+            try {
+                const userId = ctx.match[1];
+                await ctx.answerCbQuery("🧪 Надсилаю тестове повідомлення...");
+
+                const testMessage = `🧪 *Тестове повідомлення*
+
+Це тестове повідомлення для перевірки роботи системи сповіщень.
+
+✅ Якщо ви бачите це повідомлення, система працює коректно!
+
+📅 Час: ${new Date().toLocaleString('uk-UA')}
+👤 Відправлено адміністратором`;
+
+                const result = await this.notificationService.sendMessage(userId, testMessage, 'Markdown');
+                
+                if (result.success) {
+                    await ctx.reply("✅ Тестове повідомлення успішно надіслано!");
+                } else {
+                    await ctx.reply(`❌ Помилка при надсиланні: ${result.error}`);
+                }
+
+                await this.showUserDetails(ctx, userId);
+            } catch (error) {
+                console.log("Error sending test notification:", error);
+                await ctx.reply("❌ Помилка при надсиланні тестового повідомлення.");
+            }
+        });
+
+        this.scene.action(/^view_user_(.+)$/, async (ctx) => {
+            try {
+                const userId = ctx.match[1];
+                await ctx.answerCbQuery();
+                await this.showUserDetails(ctx, userId);
+            } catch (error) {
+                console.log("Error showing user details:", error);
+                await ctx.reply("❌ Помилка при відображенні інформації про користувача.");
+            }
+        });
+
         this.scene.action("next_page", async (ctx) => {
             try {
                 await ctx.answerCbQuery();
@@ -439,6 +514,11 @@ export class AdminUsersScene implements IScene {
                 }
             }
 
+            // Test notification button - only for non-blocked users
+            if (!user.isBlocked) {
+                buttons.push([Markup.button.callback("📤 Надіслати зараз", `send_content_${userId}`)]);
+            }
+
             if (isSelf) {
                 message += `\n\n💡 Ви не можете змінити роль або статус власного акаунта.`;
             }
@@ -452,6 +532,173 @@ export class AdminUsersScene implements IScene {
         } catch (error) {
             console.log("Error showing user details:", error);
             await ctx.reply("❌ Помилка при завантаженні інформації про користувача.");
+        }
+    }
+
+    private async showContentTypeSelection(ctx: IBotContext, userId: string) {
+        try {
+            const user = await this.adminService.getUserById(userId);
+            if (!user) {
+                await ctx.reply("❌ Користувача не знайдено.");
+                return;
+            }
+
+            const message = `📤 *Надіслати контент користувачу: ${user.username || 'Без імені'}*
+
+Оберіть тип контенту для надсилання:`;
+
+            const buttons = [
+                [Markup.button.callback("📰 Новини за підписками", `send_news_${userId}`)],
+                [Markup.button.callback("🎙️ Персональний подкаст", `send_podcast_${userId}`)],
+                [Markup.button.callback("🧪 Тестове повідомлення", `send_test_${userId}`)],
+                [Markup.button.callback("🔙 Назад", `view_user_${userId}`)]
+            ];
+
+            await ctx.reply(message, {
+                parse_mode: 'Markdown',
+                reply_markup: Markup.inlineKeyboard(buttons).reply_markup
+            });
+        } catch (error) {
+            console.log("Error showing content type selection:", error);
+            await ctx.reply("❌ Помилка при відображенні опцій.");
+        }
+    }
+
+    private async sendNewsToUser(ctx: IBotContext, userId: string) {
+        try {
+            // Get user subscriptions
+            const subscriptions = await this.adminService.getUserSubscriptions(userId);
+            
+            if (subscriptions.length === 0) {
+                await ctx.reply("❌ Користувач не підписаний на жодну тему.");
+                await this.showUserDetails(ctx, userId);
+                return;
+            }
+
+            // Get recent articles for user's topics
+            const topicIds = subscriptions.map(sub => String(sub.topicId)).filter(id => id !== 'null');
+            const articles = await this.adminService.getRecentArticlesByTopics(topicIds, 5);
+
+            if (articles.length === 0) {
+                await ctx.reply(
+                    `❌ *Немає нових статей для тем користувача*\n\n` +
+                    `📋 Підписок користувача: ${subscriptions.length}\n` +
+                    `📰 Статей знайдено: 0\n\n` +
+                    `💡 *Можливі причини:*\n` +
+                    `• Користувач щойно підписався на теми\n` +
+                    `• Нові статті ще не були спарсені з RSS\n` +
+                    `• В базі даних немає статей для цих тем\n\n` +
+                    `🔄 Спробуйте пізніше або запустіть парсинг новин.`,
+                    { parse_mode: 'Markdown' }
+                );
+                await this.showUserDetails(ctx, userId);
+                return;
+            }
+
+            // Send articles to user
+            let sentCount = 0;
+            let failedCount = 0;
+
+            for (const article of articles) {
+                try {
+                    const topicName = (article as any).topicId?.name || 'Невідома тема';
+                    const message = this.notificationService.messageTemplateService.formatNewsNotification(article, topicName);
+                    
+                    const result = await this.notificationService.sendMessage(userId, message, 'Markdown');
+                    
+                    if (result.success) {
+                        sentCount++;
+                    } else {
+                        failedCount++;
+                    }
+
+                    // Small delay between messages
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (error) {
+                    failedCount++;
+                    console.log(`Error sending article ${article._id}:`, error);
+                }
+            }
+
+            await ctx.reply(
+                `📰 *Новини надіслано!*\n\n` +
+                `📨 Відправлено: ${sentCount}\n` +
+                `❌ Помилок: ${failedCount}\n` +
+                `📋 Тем користувача: ${subscriptions.length}`,
+                { parse_mode: 'Markdown' }
+            );
+
+            await this.showUserDetails(ctx, userId);
+        } catch (error) {
+            console.log("Error sending news to user:", error);
+            await ctx.reply("❌ Помилка при надсиланні новин.");
+        }
+    }
+
+    private async sendPodcastToUser(ctx: IBotContext, userId: string) {
+        try {
+            // Get user subscriptions
+            const subscriptions = await this.adminService.getUserSubscriptions(userId);
+            
+            if (subscriptions.length === 0) {
+                await ctx.reply("❌ Користувач не підписаний на жодну тему.");
+                await this.showUserDetails(ctx, userId);
+                return;
+            }
+
+            // Check if there are articles for user's topics
+            const topicIds = subscriptions.map(sub => String(sub.topicId)).filter(id => id !== 'null');
+            const articles = await this.adminService.getRecentArticlesByTopics(topicIds, 1);
+
+            if (articles.length === 0) {
+                await ctx.reply(
+                    `❌ *Немає статей для генерації подкасту*\n\n` +
+                    `📋 Підписок користувача: ${subscriptions.length}\n` +
+                    `📰 Статей знайдено: 0\n\n` +
+                    `💡 *Можливі причини:*\n` +
+                    `• Користувач щойно підписався на теми\n` +
+                    `• Нові статті ще не були спарсені з RSS\n` +
+                    `• В базі даних немає статей для цих тем\n\n` +
+                    `🔄 Спробуйте пізніше або надішліть новини замість подкасту.`,
+                    { parse_mode: 'Markdown' }
+                );
+                await this.showUserDetails(ctx, userId);
+                return;
+            }
+
+            // Generate podcast for user
+            const podcastService = this.notificationService.podcastService;
+            if (!podcastService) {
+                await ctx.reply("❌ Сервіс подкастів недоступний.");
+                await this.showUserDetails(ctx, userId);
+                return;
+            }
+
+            const podcastUrl = await podcastService.generateForUser(userId);
+            
+            if (podcastUrl) {
+                await ctx.reply("✅ Персональний подкаст згенеровано та надіслано користувачу!");
+            } else {
+                await ctx.reply("❌ Помилка при генерації подкасту.");
+            }
+
+            await this.showUserDetails(ctx, userId);
+        } catch (error) {
+            console.log("Error sending podcast to user:", error);
+            
+            // More specific error handling
+            if (error instanceof Error && error.message.includes('No recent articles')) {
+                await ctx.reply(
+                    `❌ *Немає статей для генерації подкасту*\n\n` +
+                    `💡 *Рекомендації:*\n` +
+                    `• Перевірте чи є статті в базі даних\n` +
+                    `• Запустіть парсинг новин для тем користувача\n` +
+                    `• Спробуйте надіслати новини замість подкасту`,
+                    { parse_mode: 'Markdown' }
+                );
+            } else {
+                await ctx.reply("❌ Помилка при надсиланні подкасту.");
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
 import { AdminMiddleware } from "@infrastructure/middleware/AdminMiddleware";
 import { Telegraf } from "telegraf";
+import { INotificationService } from "@application/interfaces/INotificationService";
 
 interface SessionData {
     message?: string;
@@ -19,7 +20,8 @@ export class AdminBroadcastScene implements IScene {
     constructor(
         private readonly adminService: IAdminService,
         private readonly adminMiddleware: AdminMiddleware,
-        private readonly bot: Telegraf<IBotContext>
+        private readonly bot: Telegraf<IBotContext>,
+        private readonly notificationService: INotificationService
     ) {
         this.scene = new BaseScene<IBotContext>(this.name);
         this.registerHandlers();
@@ -61,6 +63,7 @@ export class AdminBroadcastScene implements IScene {
                         [Markup.button.callback("👥 Всім користувачам", "broadcast_all")],
                         [Markup.button.callback("✅ Тільки активним", "broadcast_active")],
                         [Markup.button.callback("📰 За топіком", "broadcast_topic")],
+                        [Markup.button.callback("🧪 Тестове повідомлення", "test_broadcast")],
                         [Markup.button.callback("🔙 Назад", "back_to_admin")]
                     ]).reply_markup
                 }
@@ -154,6 +157,10 @@ export class AdminBroadcastScene implements IScene {
             } catch (error) {
                 console.log("Error returning to admin menu:", error);
             }
+        });
+
+        this.scene.action("test_broadcast", async (ctx) => {
+            await this.sendTestBroadcast(ctx);
         });
 
         // Handle text input
@@ -339,6 +346,46 @@ export class AdminBroadcastScene implements IScene {
         } catch (error) {
             console.log("Error sending broadcast:", error);
             await ctx.reply("❌ Помилка при розсилці повідомлень.");
+        }
+    }
+
+    private async sendTestBroadcast(ctx: IBotContext) {
+        try {
+            await ctx.answerCbQuery("🧪 Надсилаю тестове повідомлення всім активним користувачам...");
+
+            const testMessage = `🧪 *Тестове повідомлення від адміністратора*
+
+Це тестове повідомлення для перевірки роботи системи розсилки.
+
+✅ Якщо ви бачите це повідомлення, система працює коректно!
+
+📅 Час: ${new Date().toLocaleString('uk-UA')}
+👤 Відправлено адміністратором`;
+
+            // Get all active users
+            const users = await this.adminService.getAllUsers();
+            const activeUsers = users.filter(user => !user.isBlocked);
+            
+            if (activeUsers.length === 0) {
+                await ctx.reply("❌ Немає активних користувачів для тестування.");
+                return;
+            }
+
+            const userIds = activeUsers.map(user => user._id);
+            const result = await this.notificationService.sendBulkMessages(userIds, testMessage);
+
+            await ctx.reply(
+                `🧪 *Тестове повідомлення надіслано!*\n\n` +
+                `📨 Відправлено: ${result.sent}\n` +
+                `❌ Помилок: ${result.failed}\n` +
+                `👥 Всього активних користувачів: ${activeUsers.length}`,
+                { parse_mode: 'Markdown' }
+            );
+
+            await ctx.scene.reenter();
+        } catch (error) {
+            console.log("Error sending test broadcast:", error);
+            await ctx.reply("❌ Помилка при надсиланні тестового повідомлення.");
         }
     }
 }

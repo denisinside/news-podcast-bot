@@ -43,8 +43,8 @@ import {
 } from "@infrastructure/clients";
 import {QueueManager} from "@infrastructure/managers/QueueManager";
 import { AdminMiddleware } from '@infrastructure/middleware/AdminMiddleware';
-
-
+import { MessageTemplateService } from './application/services/MessageTemplateService';
+import { NotificationService } from './application/services/NotificationService';
 
 const config = new ConfigService();
 
@@ -71,17 +71,26 @@ const commands: ICommand[] = [];
 
 const bot = new NewsPodcastBot(config, commands, []);
 
+// Initialize notification services
+const messageTemplateService = new MessageTemplateService();
+const notificationService = new NotificationService(bot.bot, subscriptionRepository, messageTemplateService);
+
+// Set notification service in other services
+newsFinderService.setNotificationService(notificationService);
+podcastService.setNotificationService(notificationService);
+notificationService.setPodcastService(podcastService);
+
 const scenes: IScene[] = [
     new StartScene(adminService, subscriptionService, userService),
-    new SubscribeScene(adminService, subscriptionService, queueManager),
+    new SubscribeScene(adminService, subscriptionService),
     new UnsubscribeScene(adminService, subscriptionService),
     new MySubscriptionsScene(adminService, subscriptionService),
     new SettingsScene(userSettingsService),
     new AdminMenuScene(adminService, adminMiddleware),
     new AdminTopicsScene(adminService, adminMiddleware, bot.bot),
     new AdminStatisticsScene(adminService, adminMiddleware),
-    new AdminUsersScene(adminService, adminMiddleware),
-    new AdminBroadcastScene(adminService, adminMiddleware, bot.bot)
+    new AdminUsersScene(adminService, adminMiddleware, notificationService),
+    new AdminBroadcastScene(adminService, adminMiddleware, bot.bot, notificationService)
 ];
 
 bot.scenes = scenes;
