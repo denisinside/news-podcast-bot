@@ -150,6 +150,7 @@ export class SubscribeScene implements IScene{
 
                 await this.subscriptionService.subscribe(String(ctx.from!.id), new Types.ObjectId(topicId));
                 await ctx.answerCbQuery("✅ Ви підписані на цю тему!");
+                const userId = String(ctx.from!.id)
 
                 // Get updated subscriptions to show in message
                 let subscriptionsText = "";

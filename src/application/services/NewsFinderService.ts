@@ -35,9 +35,9 @@ export class NewsFinderService implements INewsFinderService {
     async fetchAndSaveAllTopics(): Promise<void> {
         try {
             console.log('Starting news fetching process for all topics...');
-            
+
             const topics = await this.topicRepository.findAll();
-            
+
             if (topics.length === 0) {
                 console.log('No topics found to fetch articles for');
                 return;
@@ -75,18 +75,18 @@ export class NewsFinderService implements INewsFinderService {
             }
 
             const savedArticles = await this.articleRepository.bulkInsert(articles);
-            
+
             console.log(`Saved ${savedArticles.length} new articles for topic: ${topic.name}`);
 
             // Send notifications to subscribers for each new article
             if (this.notificationService && savedArticles.length > 0) {
                 console.log(`Sending notifications for ${savedArticles.length} new articles in topic: ${topic.name}`);
-                
+
                 for (const article of savedArticles) {
                     try {
                         const result = await this.notificationService.sendNewsToSubscribers(topic.id, article);
                         console.log(`News notification sent: ${result.sent} users, ${result.failed} failed`);
-                        
+
                         if (result.errors.length > 0) {
                             console.warn('Notification errors:', result.errors);
                         }
@@ -107,8 +107,8 @@ export class NewsFinderService implements INewsFinderService {
     async getArticlesByKeywords(keywords: string[]): Promise<IArticle[]> {
         try {
             const allArticles = await this.articleRepository.findAll();
-            return allArticles.filter(article => 
-                keywords.some(keyword => 
+            return allArticles.filter(article =>
+                keywords.some(keyword =>
                     article.title.toLowerCase().includes(keyword.toLowerCase()) ||
                     article.content.toLowerCase().includes(keyword.toLowerCase())
                 )

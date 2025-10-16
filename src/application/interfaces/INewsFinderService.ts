@@ -1,6 +1,7 @@
 import { INewsSourceStrategy } from "@/infrastructure/strategies/INewsSourceStrategy";
 import { IArticle } from "@/models/Article";
 import { ITopic } from "@/models/Topic";
+import {INotificationService} from "@application/interfaces/INotificationService";
 
 
 export interface INewsFinderService {
@@ -11,4 +12,5 @@ export interface INewsFinderService {
     getArticlesBySource(source: string): Promise<IArticle[]>;
     cleanupOldArticles(daysOld: number): Promise<number>;
     initAllStrategies(): Promise<void>;
+    setNotificationService(notificationService: INotificationService): void;
 }

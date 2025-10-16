@@ -54,14 +54,14 @@ const articleRepository: IArticleRepository = new ArticleRepository();
 const subscriptionRepository: ISubscriptionRepository = new SubscriptionRepository();
 const podcastRepository: IPodcastRepository = new PodcastRepository();
 const queueService: IQueueService = new QueueService(config);
-const queueManager= new QueueManager(queueService, config);
+const queueManager = new QueueManager(queueService, config);
 const storageClient: IFileStorageClient = new FileStorageClient();
 const geminiClient: IGeminiClient = new GeminiClient(config.get('GEMINI_API_KEY'));
+const newsFinderService: INewsFinderService = new NewsFinderService(articleRepository, topicRepository);
 
-const adminService = new AdminService(topicRepository, userRepository, subscriptionRepository, podcastRepository);
+const adminService: IAdminService = new AdminService(topicRepository, userRepository, subscriptionRepository, podcastRepository, articleRepository, newsFinderService);
 const subscriptionService: ISubscriptionService = new SubscriptionService(subscriptionRepository);
 const userSettingsService: IUserSettingsService = new UserSettingsService();
-const newsFinderService: INewsFinderService = new NewsFinderService(articleRepository, topicRepository);
 // const schedulingService = new SchedulingService(userRepository, subscriptionRepository, queueClient, newsFinderService);
 const podcastService = new PodcastService(podcastRepository, articleRepository, subscriptionRepository, storageClient, geminiClient);
 const userService: IUserService = new UserService(userRepository);
@@ -82,7 +82,7 @@ notificationService.setPodcastService(podcastService);
 
 const scenes: IScene[] = [
     new StartScene(adminService, subscriptionService, userService),
-    new SubscribeScene(adminService, subscriptionService),
+    new SubscribeScene(adminService, subscriptionService, queueManager),
     new UnsubscribeScene(adminService, subscriptionService),
     new MySubscriptionsScene(adminService, subscriptionService),
     new SettingsScene(userSettingsService),
