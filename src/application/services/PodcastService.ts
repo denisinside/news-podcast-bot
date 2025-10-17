@@ -71,7 +71,8 @@ export class PodcastService {
 
             const mp3Buffer = await this.convertToMp3(audioBuffer);
 
-            const fileName = `podcast_${userId}_${podcast._id}.mp3`;
+            // Generate descriptive filename
+            const fileName = this.generatePodcastFileName(subscriptions);
             const fileUrl = await this.storageClient.upload(mp3Buffer, fileName);
 
             await this.podcastRepository.update(podcast._id as any, {
@@ -228,5 +229,37 @@ export class PodcastService {
         `;
 
         return this.geminiClient.generateText(prompt);
+    }
+
+    private generatePodcastFileName(subscriptions: ISubscription[]): string {
+        // Get current date in YYYY-MM-DD format
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        // Get topic names from subscriptions
+        const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
+        const topicNames = validSubscriptions.map(sub => {
+            if (typeof sub.topicId === 'object' && sub.topicId !== null) {
+                return (sub.topicId as any).name || 'невідома-тема';
+            }
+            return 'невідома-тема';
+        });
+        
+        // Clean topic names for filename (remove special characters, spaces)
+        const cleanTopicNames = topicNames.map(name => 
+            name.toLowerCase()
+                .replace(/[^а-яa-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
+        );
+        
+        // Join topics with hyphens
+        const topicsStr = cleanTopicNames.join('-');
+        
+        // Generate filename
+        const fileName = `podcast_${dateStr}_${topicsStr}.mp3`;
+        
+        console.log('Generated podcast filename:', fileName);
+        return fileName;
     }
 }
