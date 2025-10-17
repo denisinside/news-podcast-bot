@@ -57,9 +57,10 @@ export interface INotificationService {
      * @param message - Message text to send
      * @param imageUrl - Optional image URL to attach
      * @param articleUrl - Optional article URL for button
+     * @param parseMode - Optional parse mode (Markdown, HTML)
      * @returns Promise with delivery result
      */
-    sendMessageWithMedia(userId: string, message: string, imageUrl?: string, articleUrl?: string): Promise<{
+    sendMessageWithMedia(userId: string, message: string, imageUrl?: string, articleUrl?: string, parseMode?: 'Markdown' | 'HTML'): Promise<{
         success: boolean;
         error?: string;
     }>;

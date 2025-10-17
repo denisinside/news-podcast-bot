@@ -40,11 +40,31 @@ export class AdminMenuScene implements IScene {
                         [Markup.button.callback("📊 Статистика", "admin_statistics")],
                         [Markup.button.callback("👥 Керування користувачами", "admin_users")],
                         [Markup.button.callback("📢 Розсилка повідомлень", "admin_broadcast")],
+                        [Markup.button.callback("📢 Реклама", "admin_advertisement")],
                         [Markup.button.callback("🔄 Запустити парсинг новин", "trigger_news_parsing")],
                         [Markup.button.callback("🔙 Назад до головного меню", "back_to_start")]
                     ]).reply_markup
                 }
             );
+        });
+
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
+            }
         });
 
         this.scene.action("admin_topics", async (ctx) => {
@@ -80,6 +100,15 @@ export class AdminMenuScene implements IScene {
                 await ctx.scene.enter("admin_broadcast");
             } catch (error) {
                 console.log("Error entering admin_broadcast scene:", error);
+            }
+        });
+
+        this.scene.action("admin_advertisement", async (ctx) => {
+            try {
+                await ctx.answerCbQuery();
+                await ctx.scene.enter("admin_advertisement");
+            } catch (error) {
+                console.log("Error entering admin_advertisement scene:", error);
             }
         });
 

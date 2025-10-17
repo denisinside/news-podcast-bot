@@ -241,13 +241,13 @@ export class NotificationService implements INotificationService {
         }
     }
 
-    async sendMessageWithMedia(userId: string, message: string, imageUrl?: string, articleUrl?: string): Promise<{
+    async sendMessageWithMedia(userId: string, message: string, imageUrl?: string, articleUrl?: string, parseMode: 'Markdown' | 'HTML' = 'Markdown'): Promise<{
         success: boolean;
         error?: string;
     }> {
         try {
             const options: any = {
-                parse_mode: 'Markdown',
+                parse_mode: parseMode,
                 link_preview_options: { is_disabled: true }
             };
 

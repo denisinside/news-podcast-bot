@@ -11,13 +11,17 @@ import { AdminTopicsScene } from './presentation/telegram/scenes/AdminTopicsScen
 import { AdminStatisticsScene } from './presentation/telegram/scenes/AdminStatisticsScene';
 import { AdminUsersScene } from './presentation/telegram/scenes/AdminUsersScene';
 import { AdminBroadcastScene } from './presentation/telegram/scenes/AdminBroadcastScene';
+import { AdminAdvertisementScene } from './presentation/telegram/scenes/AdminAdvertisementScene';
 import { AdminService, UserService } from "@application/services";
+import { ScheduledAdvertisementProcessor } from './workers/ScheduledAdvertisementProcessor';
 import { SubscriptionService } from "@application/services";
+import { AdvertisementService } from "@application/services/AdvertisementService";
 import { UserSettingsService } from "@application/services/UserSettingsService";
 import { StartScene } from "./presentation/telegram/scenes/StartScene";
 import { SubscriptionRepository } from "./infrastructure/repositories/SubscriptionRepository";
 import { UserRepository } from "./infrastructure/repositories/UserRepository";
 import { TopicRepository } from "./infrastructure/repositories/TopicRepository";
+import { AdvertisementRepository } from "./infrastructure/repositories/AdvertisementRepository";
 import { ArticleRepository } from "./infrastructure/repositories/ArticleRepository";
 import { NewsFinderService } from "./application/services/NewsFinderService";
 import { SchedulingService } from "./application/services/SchedulingService";
@@ -38,6 +42,7 @@ const topicRepository = new TopicRepository();
 const articleRepository = new ArticleRepository();
 const subscriptionRepository = new SubscriptionRepository();
 const podcastRepository = new PodcastRepository();
+const advertisementRepository = new AdvertisementRepository();
 const queueClient = new QueueClient();
 const storageClient = new FileStorageClient();  
 const geminiClient = new GeminiClient(config.get('GEMINI_API_KEY'));
@@ -57,6 +62,7 @@ const bot = new NewsPodcastBot(config, commands, []);
 // Initialize notification services
 const messageTemplateService = new MessageTemplateService();
 const notificationService = new NotificationService(bot.bot, subscriptionRepository, topicRepository, messageTemplateService);
+const advertisementService = new AdvertisementService(advertisementRepository, userRepository, topicRepository, subscriptionRepository, notificationService, adminService);
 
 // Set notification service in other services
 newsFinderService.setNotificationService(notificationService);
@@ -73,8 +79,15 @@ const scenes: IScene[] = [
     new AdminTopicsScene(adminService, adminMiddleware, bot.bot),
     new AdminStatisticsScene(adminService, adminMiddleware),
     new AdminUsersScene(adminService, adminMiddleware, notificationService),
-    new AdminBroadcastScene(adminService, adminMiddleware, bot.bot, notificationService)
+    new AdminBroadcastScene(adminService, adminMiddleware, bot.bot, notificationService),
+    new AdminAdvertisementScene(advertisementService, adminMiddleware)
 ];
 
 bot.scenes = scenes;
 bot.init();
+
+// Start scheduled advertisement processor
+const scheduledProcessor = new ScheduledAdvertisementProcessor(advertisementRepository, advertisementService);
+scheduledProcessor.start();
+
+console.log('Bot started successfully');
