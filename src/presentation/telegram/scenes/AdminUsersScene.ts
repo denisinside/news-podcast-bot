@@ -602,9 +602,9 @@ export class AdminUsersScene implements IScene {
             for (const article of articles) {
                 try {
                     const topicName = (article as any).topicId?.name || 'Невідома тема';
-                    const message = this.notificationService.messageTemplateService.formatNewsNotification(article, topicName);
+                    const messageData = this.notificationService.messageTemplateService.formatNewsNotification(article, topicName);
                     
-                    const result = await this.notificationService.sendMessage(userId, message, 'Markdown');
+                    const result = await this.notificationService.sendMessageWithMedia(userId, messageData.text, messageData.imageUrl, messageData.url);
                     
                     if (result.success) {
                         sentCount++;

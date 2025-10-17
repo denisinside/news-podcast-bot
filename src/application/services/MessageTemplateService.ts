@@ -3,35 +3,31 @@ import { IArticle } from "@/models";
 
 export class MessageTemplateService implements IMessageTemplateService {
     
-    formatNewsNotification(article: IArticle, topicName: string): string {
+    formatNewsNotification(article: IArticle, topicName: string): { text: string; imageUrl?: string; url?: string } {
         const truncatedContent = this.truncateText(article.content, 1000);
         
-        const message = `📰 *Новина з теми "${topicName}"*
+        const message = `🔹 *${article.title}*
 
-🔹 *${this.escapeMarkdown(article.title)}*
+📝 ${truncatedContent}
 
-📝 ${this.escapeMarkdown(truncatedContent)}
+📰 ${topicName}
+📅 ${this.formatDate(article.publicationDate)}`;
 
-🔗 [Читати повністю](${article.url})
-
-📅 Опубліковано: ${this.formatDate(article.publicationDate)}
-📡 Джерело: ${this.escapeMarkdown(article.source)}`;
-
-        return this.truncateText(message, 4000);
+        return {
+            text: this.truncateText(message, 4000),
+            imageUrl: article.url,
+            url: article.source
+        };
     }
 
     formatPodcastNotification(podcastUrl: string, topics: string[], duration?: string): string {
-        const topicsList = topics.map(topic => `• ${this.escapeMarkdown(topic)}`).join('\n');
+        const topicsList = topics.map(topic => `• ${topic}`).join('\n');
         const durationText = duration ? `\n⏱️ Тривалість: ${duration}` : '';
         
         const message = `🎙️ *Ваш персональний подкаст готовий!*
 
 📋 *Теми в подкасті:*
-${topicsList}${durationText}
-
-🎧 [Слухати подкаст](${podcastUrl})
-
-💡 Подкаст згенеровано на основі ваших підписок`;
+${topicsList}${durationText}`;
 
         return this.truncateText(message, 4000);
     }
@@ -39,7 +35,7 @@ ${topicsList}${durationText}
     formatErrorNotification(error: string): string {
         return `❌ *Помилка*
 
-${this.escapeMarkdown(error)}
+${error}
 
 Зверніться до підтримки, якщо проблема повторюється.`;
     }
@@ -64,28 +60,6 @@ ${this.escapeMarkdown(error)}
         return truncated + '...';
     }
 
-    private escapeMarkdown(text: string): string {
-        return text
-            .replace(/\\/g, '\\\\')
-            .replace(/\*/g, '\\*')
-            .replace(/_/g, '\\_')
-            .replace(/\[/g, '\\[')
-            .replace(/\]/g, '\\]')
-            .replace(/\(/g, '\\(')
-            .replace(/\)/g, '\\)')
-            .replace(/~/g, '\\~')
-            .replace(/`/g, '\\`')
-            .replace(/>/g, '\\>')
-            .replace(/#/g, '\\#')
-            .replace(/\+/g, '\\+')
-            .replace(/-/g, '\\-')
-            .replace(/=/g, '\\=')
-            .replace(/\|/g, '\\|')
-            .replace(/\{/g, '\\{')
-            .replace(/\}/g, '\\}')
-            .replace(/\./g, '\\.')
-            .replace(/!/g, '\\!');
-    }
 
     private formatDate(date: Date): string {
         return date.toLocaleDateString('uk-UA', {

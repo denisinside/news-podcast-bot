@@ -56,7 +56,7 @@ const bot = new NewsPodcastBot(config, commands, []);
 
 // Initialize notification services
 const messageTemplateService = new MessageTemplateService();
-const notificationService = new NotificationService(bot.bot, subscriptionRepository, messageTemplateService);
+const notificationService = new NotificationService(bot.bot, subscriptionRepository, topicRepository, messageTemplateService);
 
 // Set notification service in other services
 newsFinderService.setNotificationService(notificationService);

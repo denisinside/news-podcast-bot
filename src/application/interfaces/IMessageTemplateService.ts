@@ -5,9 +5,9 @@ export interface IMessageTemplateService {
      * Formats a news article into a Telegram message
      * @param article - The article to format
      * @param topicName - Name of the topic the article belongs to
-     * @returns Formatted message text in Markdown
+     * @returns Object with formatted message text, optional image URL and article URL
      */
-    formatNewsNotification(article: IArticle, topicName: string): string;
+    formatNewsNotification(article: IArticle, topicName: string): { text: string; imageUrl?: string; url?: string };
 
     /**
      * Formats a podcast notification message
