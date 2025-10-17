@@ -576,7 +576,13 @@ export class AdminUsersScene implements IScene {
             }
 
             // Get recent articles for user's topics
-            const topicIds = subscriptions.map(sub => String(sub.topicId)).filter(id => id !== 'null');
+            const topicIds = subscriptions.map(sub => {
+                // Handle populated topicId (object) vs non-populated (ObjectId)
+                if (sub.topicId && typeof sub.topicId === 'object' && (sub.topicId as any)._id) {
+                    return String((sub.topicId as any)._id);
+                }
+                return String(sub.topicId);
+            }).filter(id => id !== 'null');
             const articles = await this.adminService.getRecentArticlesByTopics(topicIds, 5);
 
             if (articles.length === 0) {
@@ -647,7 +653,13 @@ export class AdminUsersScene implements IScene {
             }
 
             // Check if there are articles for user's topics
-            const topicIds = subscriptions.map(sub => String(sub.topicId)).filter(id => id !== 'null');
+            const topicIds = subscriptions.map(sub => {
+                // Handle populated topicId (object) vs non-populated (ObjectId)
+                if (sub.topicId && typeof sub.topicId === 'object' && (sub.topicId as any)._id) {
+                    return String((sub.topicId as any)._id);
+                }
+                return String(sub.topicId);
+            }).filter(id => id !== 'null');
             const articles = await this.adminService.getRecentArticlesByTopics(topicIds, 1);
 
             if (articles.length === 0) {

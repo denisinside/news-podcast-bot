@@ -11,7 +11,7 @@ export class GeminiClient implements IGeminiClient {
             throw new Error('Gemini API key is required.');
         }
         this.genAI = new GoogleGenAI({apiKey});
-        this.textModel = 'gemini-flash-latest';
+        this.textModel = 'gemini-2.5-flash-lite';
         this.modelTTS = 'gemini-2.5-flash-preview-tts';
     }
 

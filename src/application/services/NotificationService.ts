@@ -3,7 +3,7 @@ import { IMessageTemplateService } from "../interfaces/IMessageTemplateService";
 import { ISubscriptionRepository } from "@/infrastructure/repositories/ISubscriptionRepository";
 import { ITopicRepository } from "@/infrastructure/repositories/ITopicRepository";
 import { IArticle } from "@/models";
-import { Telegraf } from "telegraf";
+import { Telegraf, Input } from "telegraf";
 import { IBotContext } from "@/context/IBotContext";
 import { IPodcastService } from "../interfaces/IPodcastService";
 
@@ -70,16 +70,55 @@ export class NotificationService implements INotificationService {
         error?: string;
     }> {
         try {
+            console.log(`📤 [NotificationService] Sending podcast file to user ${userId}: ${podcastUrl}`);
+            
+            // Format the caption message
             const message = this.messageTemplateService.formatPodcastNotification(podcastUrl, topics);
             
-            const result = await this.sendMessage(userId, message, 'Markdown');
-            return result;
+            // Send the audio file with caption
+            await this.bot.telegram.sendAudio(userId, Input.fromLocalFile(podcastUrl), {
+                caption: message,
+                parse_mode: 'Markdown'
+            });
+            
+            console.log(`✅ [NotificationService] Podcast sent successfully to user ${userId}`);
+            return { success: true };
 
-        } catch (error) {
-            console.error(`Error sending podcast to user ${userId}:`, error);
+        } catch (error: any) {
+            console.error(`❌ [NotificationService] Error sending podcast to user ${userId}:`, error);
+            
+            // Handle specific Telegram errors
+            if (error.code === 403) {
+                return { 
+                    success: false, 
+                    error: 'User blocked the bot' 
+                };
+            } else if (error.code === 400) {
+                return { 
+                    success: false, 
+                    error: 'Invalid user ID or file format' 
+                };
+            } else if (error.code === 429) {
+                // Rate limit exceeded, wait and retry once
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                try {
+                    const retryMessage = this.messageTemplateService.formatPodcastNotification(podcastUrl, topics);
+                    await this.bot.telegram.sendAudio(userId, Input.fromLocalFile(podcastUrl), {
+                        caption: retryMessage,
+                        parse_mode: 'Markdown'
+                    });
+                    return { success: true };
+                } catch (retryError) {
+                    return { 
+                        success: false, 
+                        error: 'Rate limit exceeded' 
+                    };
+                }
+            }
+            
             return { 
                 success: false, 
-                error: `Failed to send podcast: ${error}` 
+                error: error.message || 'Unknown error' 
             };
         }
     }

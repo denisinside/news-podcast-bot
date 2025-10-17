@@ -42,18 +42,23 @@ export class PodcastService {
 
     async generateForUser(userId: string): Promise<string> {
         try {
+            console.log(`🎙️ [PodcastService] Starting podcast generation for user ${userId}`);
+            
             const subscriptions = await this.subscriptionRepository.findByUserId(userId);
+            console.log(`📋 [PodcastService] Found ${subscriptions.length} subscriptions for user`);
             
             if (subscriptions.length === 0) {
                 throw new Error('User has no subscriptions');
             }
 
             const articles = await this.getArticlesForPodcast(subscriptions);
+            console.log(`📰 [PodcastService] Found ${articles.length} articles for podcast`);
 
             if (articles.length === 0) {
                 throw new Error('No recent articles found for user subscriptions');
             }
 
+            console.log(`💾 [PodcastService] Creating podcast record in database`);
             const podcast = await this.podcastRepository.create({
                 userId,
                 articles: articles.map(article => article._id as Types.ObjectId)
@@ -63,25 +68,35 @@ export class PodcastService {
                 status: PodcastStatus.GENERATING
             });
 
+            console.log(`📝 [PodcastService] Generating podcast script with Gemini`);
             const scriptJson = await this.generatePodcastScript(articles);
             const scriptData = JSON.parse(scriptJson);
             const { speaker1, speaker2, text } = scriptData;
+            console.log(`🎭 [PodcastService] Script generated with speakers: ${speaker1.name} (${speaker1.voice}) & ${speaker2.name} (${speaker2.voice})`);
 
+            console.log(`🎵 [PodcastService] Generating audio with Gemini TTS`);
             const audioBuffer = await this.geminiClient.generateAudio(speaker1, speaker2, text);
+            console.log(`🔊 [PodcastService] Audio generated, buffer size: ${audioBuffer.length} bytes`);
 
+            console.log(`🔄 [PodcastService] Converting audio to MP3 format`);
             const mp3Buffer = await this.convertToMp3(audioBuffer);
+            console.log(`🎧 [PodcastService] MP3 conversion completed, buffer size: ${mp3Buffer.length} bytes`);
 
             const fileName = `podcast_${userId}_${podcast._id}.mp3`;
+            console.log(`💾 [PodcastService] Uploading file: ${fileName}`);
             const fileUrl = await this.storageClient.upload(mp3Buffer, fileName);
+            console.log(`📁 [PodcastService] File uploaded successfully: ${fileUrl}`);
 
             await this.podcastRepository.update(podcast._id as any, {
                 status: 'READY',
                 fileUrl
             });
+            console.log(`✅ [PodcastService] Podcast record updated with file URL`);
 
             // Send podcast notification to user
             if (this.notificationService) {
                 try {
+                    console.log(`📤 [PodcastService] Sending podcast notification to user`);
                     // Get topic names for the podcast
                     const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
                     const topicNames = validSubscriptions.map(sub => (sub.topicId as any).name || 'Невідома тема');
@@ -89,15 +104,16 @@ export class PodcastService {
                     const result = await this.notificationService.sendPodcastToUser(userId, fileUrl, topicNames);
                     
                     if (result.success) {
-                        console.log(`Podcast notification sent successfully to user ${userId}`);
+                        console.log(`✅ [PodcastService] Podcast notification sent successfully to user ${userId}`);
                     } else {
-                        console.warn(`Failed to send podcast notification to user ${userId}: ${result.error}`);
+                        console.warn(`⚠️ [PodcastService] Failed to send podcast notification to user ${userId}: ${result.error}`);
                     }
                 } catch (notificationError) {
-                    console.error(`Error sending podcast notification to user ${userId}:`, notificationError);
+                    console.error(`❌ [PodcastService] Error sending podcast notification to user ${userId}:`, notificationError);
                 }
             }
 
+            console.log(`🎉 [PodcastService] Podcast generation completed successfully for user ${userId}`);
             return fileUrl;
         } catch (error) {
             console.error('Error generating podcast:', error);
@@ -150,13 +166,35 @@ export class PodcastService {
     private async getArticlesForPodcast(subscriptions: ISubscription[]): Promise<IArticle[]> {
         // Filter out subscriptions with deleted topics
         const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
-        const topicIds = validSubscriptions.map(sub => sub.topicId);
+        const topicIds = validSubscriptions.map(sub => {
+            // Handle populated topicId (object) vs non-populated (ObjectId)
+            if (sub.topicId && typeof sub.topicId === 'object' && (sub.topicId as any)._id) {
+                return String((sub.topicId as any)._id);
+            }
+            return String(sub.topicId);
+        }).filter(id => id !== 'null');
         
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const articles = await this.articleRepository.findByTopicIdsSince(topicIds, yesterday);
+        console.log(`PodcastService: Looking for articles for ${topicIds.length} topics:`, topicIds);
         
-        return articles;
+        // Use the same approach as AdminUsersScene - get all articles and filter by topic
+        const allArticles = await this.articleRepository.findAll();
+        console.log(`PodcastService: Found ${allArticles.length} total articles in database`);
+        
+        // Filter articles by topic IDs and sort by publication date
+        const filteredArticles = allArticles
+            .filter(article => {
+                const articleTopicId = (article as any).topicId?._id || (article as any).topicId;
+                const matches = topicIds.includes(String(articleTopicId));
+                if (matches) {
+                    console.log(`PodcastService: Found matching article: ${article.title} (Topic: ${articleTopicId})`);
+                }
+                return matches;
+            })
+            .sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime())
+            .slice(0, 10); // Limit to 10 most recent articles
+        
+        console.log(`PodcastService: Filtered to ${filteredArticles.length} articles for podcast`);
+        return filteredArticles;
     }
 
     private async generatePodcastScript(articles: IArticle[]): Promise<string> {
