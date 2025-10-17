@@ -3,6 +3,7 @@ import { IArticleRepository } from '@infrastructure/repositories/IArticleReposit
 import { ITopicRepository } from '@infrastructure/repositories/ITopicRepository';
 import { INewsSourceStrategy } from '@infrastructure/strategies/INewsSourceStrategy';
 import { INotificationService } from '@application/interfaces/INotificationService';
+import { IUserSettingsService } from '@application/interfaces/IUserSettingsService';
 import { IArticle } from '@models/Article';
 import { ITopic } from '@models/Topic';
 import { RssSource } from '@infrastructure/strategies/RssSource';
@@ -14,6 +15,7 @@ describe('NewsFinderService', () => {
   let newsFinderService: NewsFinderService;
   let mockArticleRepository: jest.Mocked<IArticleRepository>;
   let mockTopicRepository: jest.Mocked<ITopicRepository>;
+  let mockUserSettingsService: jest.Mocked<IUserSettingsService>;
   let mockNotificationService: jest.Mocked<INotificationService>;
   let mockStrategy: jest.Mocked<INewsSourceStrategy>;
   let mockTopic: ITopic;
@@ -31,6 +33,7 @@ describe('NewsFinderService', () => {
       bulkInsert: jest.fn(),
       findByDateRange: jest.fn(),
       findBySource: jest.fn(),
+      findByUserId: jest.fn(),
       cleanupOldArticles: jest.fn(),
     };
 
@@ -42,6 +45,13 @@ describe('NewsFinderService', () => {
       delete: jest.fn(),
       findBySourceUrl: jest.fn(),
       findByName: jest.fn(),
+    };
+
+    mockUserSettingsService = {
+      getUserSettings: jest.fn(),
+      createDefaultSettings: jest.fn(),
+      updateNewsFrequency: jest.fn(),
+      updateAudioPodcasts: jest.fn(),
     };
 
     mockNotificationService = {
@@ -80,7 +90,7 @@ describe('NewsFinderService', () => {
     // Mock the initAllStrategies method to avoid constructor issues
     jest.spyOn(NewsFinderService.prototype as any, 'initAllStrategies').mockResolvedValue(undefined);
     
-    newsFinderService = new NewsFinderService(mockArticleRepository, mockTopicRepository);
+    newsFinderService = new NewsFinderService(mockArticleRepository, mockTopicRepository, mockUserSettingsService);
   });
 
   afterEach(() => {
@@ -90,7 +100,7 @@ describe('NewsFinderService', () => {
   describe('constructor', () => {
     it('should create instance with dependencies', () => {
       // Act
-      const service = new NewsFinderService(mockArticleRepository, mockTopicRepository);
+      const service = new NewsFinderService(mockArticleRepository, mockTopicRepository, mockUserSettingsService);
 
       // Assert
       expect(service).toBeInstanceOf(NewsFinderService);
@@ -308,6 +318,62 @@ describe('NewsFinderService', () => {
 
       // Cleanup
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('getArticlesForUser', () => {
+    it('should return articles for user with HOURLY frequency', async () => {
+      // Arrange
+      const userId = '123';
+      const userSettings = {
+        userId: 123,
+        newsFrequency: 'hourly' as any,
+        enableAudioPodcasts: false
+      };
+      const articles = [mockArticle];
+      
+      mockUserSettingsService.getUserSettings.mockResolvedValue(userSettings as any);
+      mockArticleRepository.findByUserId.mockResolvedValue(articles);
+
+      // Act
+      const result = await newsFinderService.getArticlesForUser(userId);
+
+      // Assert
+      expect(mockUserSettingsService.getUserSettings).toHaveBeenCalledWith(123);
+      expect(mockArticleRepository.findByUserId).toHaveBeenCalledWith(userId, expect.any(Date));
+      expect(result).toBe(articles);
+    });
+
+    it('should return empty array when user settings not found', async () => {
+      // Arrange
+      const userId = '123';
+      mockUserSettingsService.getUserSettings.mockResolvedValue(null);
+
+      // Act
+      const result = await newsFinderService.getArticlesForUser(userId);
+
+      // Assert
+      expect(result).toEqual([]);
+      expect(mockArticleRepository.findByUserId).not.toHaveBeenCalled();
+    });
+
+    it('should return empty array when news is disabled', async () => {
+      // Arrange
+      const userId = '123';
+      const userSettings = {
+        userId: 123,
+        newsFrequency: 'disabled' as any,
+        enableAudioPodcasts: false
+      };
+      
+      mockUserSettingsService.getUserSettings.mockResolvedValue(userSettings as any);
+
+      // Act
+      const result = await newsFinderService.getArticlesForUser(userId);
+
+      // Assert
+      expect(result).toEqual([]);
+      expect(mockArticleRepository.findByUserId).not.toHaveBeenCalled();
     });
   });
 

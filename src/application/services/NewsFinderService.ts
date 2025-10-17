@@ -7,21 +7,26 @@ import { NewsSource } from '@/types';
 import { INewsFinderService } from '../interfaces/INewsFinderService';
 import { RssSource } from '@/infrastructure/strategies/RssSource';
 import { INotificationService } from '../interfaces/INotificationService';
+import { IUserSettingsService } from '../interfaces/IUserSettingsService';
+import { IUserSettings, NewsFrequency } from '@/models/UserSettings';
 
 export class NewsFinderService implements INewsFinderService {
     private articleRepository: IArticleRepository;
     private topicRepository: ITopicRepository;
     private strategies: Map<string, INewsSourceStrategy>;
     private notificationService?: INotificationService;
+    private userSettingsService: IUserSettingsService;
 
     constructor(
         articleRepository: IArticleRepository,
-        topicRepository: ITopicRepository
+        topicRepository: ITopicRepository,
+        userSettingsService: IUserSettingsService
     ) {
         this.articleRepository = articleRepository;
         this.topicRepository = topicRepository;
         this.strategies = new Map();
         this.initAllStrategies();
+        this.userSettingsService = userSettingsService;
     }
 
     setNotificationService(notificationService: INotificationService): void {
@@ -118,6 +123,62 @@ export class NewsFinderService implements INewsFinderService {
             return [];
         }
     }
+
+    async getArticlesForUser(userId: string): Promise<IArticle[]> {
+        const userSettings = await this.userSettingsService.getUserSettings(Number(userId));
+        if (!userSettings) {
+            return [];
+        }
+
+        if (userSettings.newsFrequency === NewsFrequency.DISABLED) {
+            return [];
+        }
+
+        const now = new Date();
+        const previousSendTime = this.getPreviousSendTime(userSettings, now);
+
+        return await this.articleRepository.findByUserId(userId, previousSendTime);
+    }
+
+    private getPreviousSendTime(userSettings: IUserSettings, now: Date): Date {
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentSecond = now.getSeconds();
+        const currentMillisecond = now.getMilliseconds();
+        
+        switch (userSettings.newsFrequency) {
+            case NewsFrequency.HOURLY:
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour - 1, currentMinute, currentSecond, currentMillisecond);
+                
+            case NewsFrequency.EVERY_3_HOURS:
+                // Find the last 3-hour interval (0, 3, 6, 9, 12, 15, 18, 21)
+                const last3HourInterval = Math.floor(currentHour / 3) * 3;
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), last3HourInterval, 0, 0, 0);
+                
+            case NewsFrequency.TWICE_DAILY:
+                // 8:00 or 20:00 - whichever was last
+                if (currentHour >= 20) {
+                    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0, 0);
+                } else if (currentHour >= 8) {
+                    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0, 0);
+                } else {
+                    // Before 8:00, so previous day at 20:00
+                    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 20, 0, 0, 0);
+                }
+                
+            case NewsFrequency.DAILY:
+                // Previous day at 8:00
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 8, 0, 0, 0);
+                
+            case NewsFrequency.DISABLED:
+                // Return a very old date to ensure no articles are returned
+                return new Date(0);
+                
+            default:
+                return now;
+        }
+    }
+
 
     async getArticlesByDateRange(startDate: Date, endDate: Date): Promise<IArticle[]> {
         return await this.articleRepository.findByDateRange(startDate, endDate);
