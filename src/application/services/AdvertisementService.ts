@@ -31,27 +31,6 @@ export class AdvertisementService {
         public readonly adminService: IAdminService
     ) {}
 
-    /**
-     * Convert Markdown to HTML for Telegram
-     */
-    private markdownToHtml(text: string): string {
-        return text
-            // Escape HTML special characters first
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            // Bold: **text** or __text__ -> <b>text</b> (do this before italic)
-            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-            .replace(/__(.*?)__/g, '<b>$1</b>')
-            // Italic: *text* or _text_ -> <i>text</i> (but not if already bold)
-            .replace(/(?<!\*)\*(?!\*)([^*]+?)\*(?!\*)/g, '<i>$1</i>')
-            .replace(/(?<!_)_(?!_)([^_]+?)_(?!_)/g, '<i>$1</i>')
-            // Code: `text` -> <code>text</code>
-            .replace(/`(.*?)`/g, '<code>$1</code>')
-            // Links: [text](url) -> <a href="url">text</a>
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-    }
-
     async createAdvertisement(data: {
         text: string;
         images?: string[];
@@ -219,10 +198,10 @@ export class AdvertisementService {
                         // Send with images
                         const result = await this.notificationService.sendMessageWithMedia(
                             userId,
-                            this.markdownToHtml(advertisement.text),
-                            advertisement.images[0], // Send first image for now
-                            undefined, // articleUrl
-                            'HTML' // parseMode - використовуємо HTML замість Markdown
+                            advertisement.text,
+                            advertisement.images[0],
+                            undefined,
+                            'Markdown'
                         );
                         
                         if (result.success) {
@@ -233,7 +212,7 @@ export class AdvertisementService {
                         }
                     } else {
                         // Send text only
-                        const result = await this.notificationService.sendMessage(userId, this.markdownToHtml(advertisement.text), 'HTML');
+                        const result = await this.notificationService.sendMessage(userId, advertisement.text, 'Markdown');
                         
                         if (result.success) {
                             sent++;

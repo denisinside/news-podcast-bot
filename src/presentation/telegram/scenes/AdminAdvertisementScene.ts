@@ -444,11 +444,6 @@ export class AdminAdvertisementScene implements IScene {
     private async requestText(ctx: IBotContext) {
         await ctx.reply(
             "✍️ *Введіть текст рекламного посту*\n\n" +
-            "Ви можете використовувати Markdown для форматування:\n" +
-            "• *жирний текст*\n" +
-            "• _курсив_\n" +
-            "• `код`\n" +
-            "• [посилання](https://example.com)\n\n" +
             "Максимум 4096 символів.",
             { 
                 parse_mode: 'Markdown',
@@ -468,7 +463,8 @@ export class AdminAdvertisementScene implements IScene {
             {
                 reply_markup: Markup.inlineKeyboard([
                     [Markup.button.callback("⏭️ Пропустити", "skip_images")]
-                ]).reply_markup
+                ]).reply_markup,
+                parse_mode: 'Markdown'
             }
         );
     }
@@ -542,18 +538,18 @@ export class AdminAdvertisementScene implements IScene {
     }
 
     private async sendTextPreview(ctx: IBotContext, text: string, preview: AdvertisementPreview) {
-        let message = "📋 <b>Попередній перегляд рекламного посту:</b>\n\n";
+        let message = "📋 *Попередній перегляд рекламного посту:*\n\n";
         message += "━━━━━━━━━━━━━━━━━━━━\n";
-        message += `<b>${text}</b>\n`;
+        message += `*${text}*\n`;
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-        message += `📊 <b>Цільова аудиторія:</b> ${preview.targetInfo}\n`;
-        message += `👥 <b>Отримувачів:</b> ${preview.recipientCount}\n`;
+        message += `📊 *Цільова аудиторія:* ${preview.targetInfo}\n`;
+        message += `👥 *Отримувачів:* ${preview.recipientCount}\n`;
         
         if (preview.images && preview.images.length > 0) {
-            message += `📷 <b>Зображень:</b> ${preview.images.length}\n`;
+            message += `📷 *Зображень:* ${preview.images.length}\n`;
         }
 
-        await ctx.reply(message, { parse_mode: 'HTML' });
+        await ctx.reply(message, { parse_mode: 'Markdown' });
     }
 
     private async requestSchedule(ctx: IBotContext) {
@@ -740,20 +736,20 @@ export class AdminAdvertisementScene implements IScene {
     }
 
     private async sendTextConfirmation(ctx: IBotContext, text: string, preview: AdvertisementPreview, scheduledFor?: Date) {
-        let message = "✅ <b>Підтвердження рекламного посту</b>\n\n";
+        let message = "✅ *Підтвердження рекламного посту*\n\n";
         message += "━━━━━━━━━━━━━━━━━━━━\n";
-        message += `<b>${text}</b>\n`;
+        message += `*${text}*\n`;
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-        message += `🎯 <b>Аудиторія:</b> ${preview.targetInfo}\n`;
-        message += `👥 <b>Отримувачів:</b> ${preview.recipientCount}\n`;
+        message += `🎯 *Аудиторія:* ${preview.targetInfo}\n`;
+        message += `👥 *Отримувачів:* ${preview.recipientCount}\n`;
         
         if (scheduledFor) {
-            message += `⏰ <b>Час відправки:</b> ${scheduledFor.toLocaleString('uk-UA')}\n`;
+            message += `⏰ *Час відправки:* ${scheduledFor.toLocaleString('uk-UA')}\n`;
         } else {
-            message += `⏰ <b>Час відправки:</b> Зараз\n`;
+            message += `⏰ *Час відправки:* Зараз\n`;
         }
 
-        await ctx.reply(message, { parse_mode: 'HTML' });
+        await ctx.reply(message, { parse_mode: 'Markdown' });
     }
 
     private async createAdvertisement(ctx: IBotContext) {

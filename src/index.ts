@@ -47,10 +47,10 @@ const queueClient = new QueueClient();
 const storageClient = new FileStorageClient();  
 const geminiClient = new GeminiClient(config.get('GEMINI_API_KEY'));
 
-const newsFinderService = new NewsFinderService(articleRepository, topicRepository);
+const userSettingsService = new UserSettingsService();
+const newsFinderService = new NewsFinderService(articleRepository, topicRepository, userSettingsService);
 const adminService = new AdminService(topicRepository, userRepository, subscriptionRepository, podcastRepository, articleRepository, newsFinderService);
 const subscriptionService = new SubscriptionService(subscriptionRepository);
-const userSettingsService = new UserSettingsService();
 const schedulingService = new SchedulingService(userRepository, subscriptionRepository, queueClient, newsFinderService);
 const podcastService = new PodcastService(podcastRepository, articleRepository, subscriptionRepository, storageClient, geminiClient);
 const userService: IUserService = new UserService(userRepository);
