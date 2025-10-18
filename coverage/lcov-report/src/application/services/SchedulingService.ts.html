@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>7/7</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>7/7</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -100,7 +100,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -112,49 +112,49 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { IUserRepository } from "@/infrastructure/repositories/IUserRepository";
 import { ISubscriptionRepository } from "@/infrastructure/repositories/ISubscriptionRepository";
-import { IQueueClient } from "@/infrastructure/clients/IQueueClient";
 import { INewsFinderService } from "../interfaces/INewsFinderService";
+import {QueueManager} from "@infrastructure/managers/QueueManager";
 &nbsp;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export class S</span>chedulingService {
+export class SchedulingService {
     private userRepository: IUserRepository;
     private subscriptionRepository: ISubscriptionRepository;
-    private queueClient: IQueueClient;
+    private queueClient: QueueManager;
     private newsFinderService: INewsFinderService;
 &nbsp;
-<span class="fstat-no" title="function not covered" >    constructor(</span>
+    constructor(
         userRepository: IUserRepository,
         subscriptionRepository: ISubscriptionRepository,
-        queueClient: IQueueClient,
+        queueManager: QueueManager,
         newsFinderService: INewsFinderService
     ) {
-<span class="cstat-no" title="statement not covered" >        this.userRepository = userRepository;</span>
-<span class="cstat-no" title="statement not covered" >        this.subscriptionRepository = subscriptionRepository;</span>
-<span class="cstat-no" title="statement not covered" >        this.queueClient = queueClient;</span>
-<span class="cstat-no" title="statement not covered" >        this.newsFinderService = newsFinderService;</span>
+        this.userRepository = userRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.queueClient = queueManager;
+        this.newsFinderService = newsFinderService;
     }
 &nbsp;
-<span class="fstat-no" title="function not covered" >    async </span>scheduleNewsFetching() {
-<span class="cstat-no" title="statement not covered" >        await this.newsFinderService.fetchAndSaveAllTopics();</span>
+    async scheduleNewsFetching() {
+        await this.newsFinderService.fetchAndSaveAllTopics();
     }
 &nbsp;
-<span class="fstat-no" title="function not covered" >    async </span>scheduleDailyPodcasts() {
-<span class="cstat-no" title="statement not covered" >        await this.newsFinderService.fetchAndSaveAllTopics();</span>
+    async scheduleDailyPodcasts() {
+        await this.newsFinderService.fetchAndSaveAllTopics();
     }
 }</pre></td></tr></table></pre>
 
@@ -163,7 +163,7 @@ import { INewsFinderService } from "../interfaces/INewsFinderService";
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-17T21:34:09.098Z
+                at 2025-10-18T09:26:23.243Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

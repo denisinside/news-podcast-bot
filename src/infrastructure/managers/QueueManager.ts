@@ -82,8 +82,17 @@ export class QueueManager {
             console.log(`Removed repeatable podcast job: ${job.name}`);
         }
 
+        // Clean up old news parser jobs
+        const newsParserQueue = this.queueService.getQueue("news-parser");
+        const newsParserRepeatableJobs = await newsParserQueue.getRepeatableJobs();
+
+        for (const job of newsParserRepeatableJobs) {
+            await newsParserQueue.removeRepeatableByKey(job.key);
+            console.log(`Removed repeatable news parser job: ${job.name}`);
+        }
+
         await this.initializeAllUsers();
-        await this.addIntervalParsingNews(1000*60*30);
+        await this.addIntervalParsingNews(1000*60*15);
 
     }
 
@@ -171,7 +180,7 @@ export class QueueManager {
     private getIntervalFromFrequency(frequency: NewsFrequency): number {
         switch (frequency) {
             case NewsFrequency.HOURLY:
-                return 60 * 60 * 1000; // 1 hour
+                return 60 * 60  * 1000; // 1 hour
             case NewsFrequency.EVERY_3_HOURS:
                 return 3 * 60 * 60 * 1000; // 3 hours
             case NewsFrequency.TWICE_DAILY:

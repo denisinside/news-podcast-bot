@@ -12,6 +12,6 @@ export interface IArticleRepository {
     bulkInsert(articles: Partial<IArticle>[]): Promise<IArticle[]>;
     findByDateRange(startDate: Date, endDate: Date): Promise<IArticle[]>;
     findBySource(source: string): Promise<IArticle[]>;
-    findByUserId(userId: string, sinceDate?: Date): Promise<IArticle[]>;
+    findByUserId(userId: string, sinceDate?: Date, untilDate?: Date): Promise<IArticle[]>;
     cleanupOldArticles(daysOld?: number): Promise<number>;
 }

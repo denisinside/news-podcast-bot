@@ -65,7 +65,7 @@ export class ArticleRepository implements IArticleRepository {
         return await Article.find({ source }).populate('topicId').sort({ publicationDate: -1 });
     }
 
-    async findByUserId(userId: string, sinceDate?: Date): Promise<IArticle[]> {
+    async findByUserId(userId: string, sinceDate?: Date, untilDate?: Date): Promise<IArticle[]> {
         const subscriptions = await Subscription.find({ 
             userId, 
             isActive: true 
@@ -84,7 +84,16 @@ export class ArticleRepository implements IArticleRepository {
         if (sinceDate) {
             query.publicationDate = { $gte: sinceDate };
         }
-        
+
+        if (untilDate) {
+            if (query.publicationDate) {
+                query.publicationDate.$lt = untilDate;
+            } else {
+                query.publicationDate = { $lt: untilDate };
+            }
+        }
+
+        console.log(query);
         return await Article.find(query)
             .populate('topicId')
             .sort({ publicationDate: -1 });

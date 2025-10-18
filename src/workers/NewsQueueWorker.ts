@@ -35,7 +35,7 @@ export class NewsQueueWorker extends BaseQueueWorker<NewsJobData> {
             const articles: IArticle[] = await this.newsFinderService.getArticlesForUser(userId);
 
             if (!articles.length) {
-                throw new Error("Жодних новин не знайдено за ключовими словами");
+                return;
             }
 
             for (const article of articles) {
@@ -50,11 +50,6 @@ export class NewsQueueWorker extends BaseQueueWorker<NewsJobData> {
 
             console.log(`✅ Усі новини (${articles.length}) надіслані користувачу ${userId}`);
         } catch (error) {
-            const message = this.messageTemplateService.formatErrorNotification(
-                "Не вдалося згенерувати новини"
-            );
-
-            await this.notificationService.sendMessage(userId, message);
             throw error;
         }
     }

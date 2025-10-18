@@ -119,8 +119,9 @@ export class NewsFinderService implements INewsFinderService {
 
         const now = new Date();
         const previousSendTime = this.getPreviousSendTime(userSettings, now);
+        const untilDate = new Date(now.getTime() - 60 * 1000);
 
-        return await this.articleRepository.findByUserId(userId, previousSendTime);
+        return await this.articleRepository.findByUserId(userId, previousSendTime, untilDate);
     }
 
     private getPreviousSendTime(userSettings: IUserSettings, now: Date): Date {

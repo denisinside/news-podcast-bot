@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -104,72 +104,72 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { ISubscriptionService } from "../interfaces/ISubscriptionService";
 import { ISubscription } from "@/models";
 import { ISubscriptionRepository } from "@infrastructure/repositories";
 import { Types } from "mongoose";
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export class S</span>ubscriptionService implements ISubscriptionService {
+export class SubscriptionService implements ISubscriptionService {
     private subscriptionRepository: ISubscriptionRepository;
 &nbsp;
-<span class="fstat-no" title="function not covered" >    constructor(s</span>ubscriptionRepository: ISubscriptionRepository) {
-<span class="cstat-no" title="statement not covered" >        this.subscriptionRepository = subscriptionRepository;</span>
+    constructor(subscriptionRepository: ISubscriptionRepository) {
+        this.subscriptionRepository = subscriptionRepository;
     }
 &nbsp;
-<span class="fstat-no" title="function not covered" >    async </span>subscribe(userId: string, topicId: Types.ObjectId): Promise&lt;void&gt; {
-        const exists = <span class="cstat-no" title="statement not covered" >await this.subscriptionRepository.exists(userId, topicId);</span>
+    async subscribe(userId: string, topicId: Types.ObjectId): Promise&lt;void&gt; {
+        const exists = await this.subscriptionRepository.exists(userId, topicId);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        if (!exists) {</span>
-<span class="cstat-no" title="statement not covered" >            await this.subscriptionRepository.create(userId, topicId);</span>
-<span class="cstat-no" title="statement not covered" >            console.log(`User ${userId} subscribed to topic ${topicId}`);</span>
+        if (!exists) {
+            await this.subscriptionRepository.create(userId, topicId);
+            console.log(`User ${userId} subscribed to topic ${topicId}`);
         } else {
-<span class="cstat-no" title="statement not covered" >            console.log(`User ${userId} already subscribed to topic ${topicId}`);</span>
+            console.log(`User ${userId} already subscribed to topic ${topicId}`);
         }
     }
 &nbsp;
-<span class="fstat-no" title="function not covered" >    async </span>unsubscribe(userId: string, topicId: Types.ObjectId): Promise&lt;void&gt; {
-        const deleted = <span class="cstat-no" title="statement not covered" >await this.subscriptionRepository.delete(userId, topicId);</span>
+    async unsubscribe(userId: string, topicId: Types.ObjectId): Promise&lt;void&gt; {
+        const deleted = await this.subscriptionRepository.delete(userId, topicId);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        if (deleted) {</span>
-<span class="cstat-no" title="statement not covered" >            console.log(`User ${userId} unsubscribed from topic ${topicId}`);</span>
+        if (deleted) {
+            console.log(`User ${userId} unsubscribed from topic ${topicId}`);
         } else {
-<span class="cstat-no" title="statement not covered" >            console.log(`User ${userId} was not subscribed to topic ${topicId}`);</span>
+            console.log(`User ${userId} was not subscribed to topic ${topicId}`);
         }
     }
 &nbsp;
-<span class="fstat-no" title="function not covered" >    async </span>getUserSubscriptions(userId: string): Promise&lt;ISubscription[]&gt; {
-<span class="cstat-no" title="statement not covered" >        return this.subscriptionRepository.findByUserId(userId);</span>
+    async getUserSubscriptions(userId: string): Promise&lt;ISubscription[]&gt; {
+        return this.subscriptionRepository.findByUserId(userId);
     }
 }</pre></td></tr></table></pre>
 
@@ -178,7 +178,7 @@ import { Types } from "mongoose";
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-17T21:34:09.098Z
+                at 2025-10-18T09:26:23.243Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

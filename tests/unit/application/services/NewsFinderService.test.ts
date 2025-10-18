@@ -341,7 +341,11 @@ describe('NewsFinderService', () => {
 
       // Assert
       expect(mockUserSettingsService.getUserSettings).toHaveBeenCalledWith(123);
-      expect(mockArticleRepository.findByUserId).toHaveBeenCalledWith(userId, expect.any(Date));
+      expect(mockArticleRepository.findByUserId).toHaveBeenCalledWith(
+        userId, 
+        expect.any(Date), // previousSendTime
+        expect.any(Date)  // untilDate
+      );
       expect(result).toBe(articles);
     });
 
