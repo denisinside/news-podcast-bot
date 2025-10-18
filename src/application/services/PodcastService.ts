@@ -41,7 +41,21 @@ export class PodcastService {
     }
 
     async generateForUser(userId: string): Promise<string> {
-        try {            
+        try {
+            // Check if there's already a podcast being generated for this user
+            const existingPodcast = await this.podcastRepository.findByUserIdAndStatus(userId, PodcastStatus.GENERATING);
+            if (existingPodcast) {
+                console.log(`⚠️ [PodcastService] User ${userId} already has a podcast being generated, skipping`);
+                return existingPodcast.fileUrl || '';
+            }
+
+            // Check if there's already a recent podcast (within last hour)
+            const recentPodcast = await this.podcastRepository.findRecentByUserId(userId, 60 * 60 * 1000); // 1 hour
+            if (recentPodcast) {
+                console.log(`⚠️ [PodcastService] User ${userId} already has a recent podcast, skipping`);
+                return recentPodcast.fileUrl || '';
+            }
+            
             const subscriptions = await this.subscriptionRepository.findByUserId(userId);
             
             if (subscriptions.length === 0) {
@@ -67,7 +81,23 @@ export class PodcastService {
 
             const scriptJson = await this.generatePodcastScript(articles);
             
-            const scriptData = JSON.parse(scriptJson);
+            // Validate and parse JSON response
+            let scriptData;
+            try {
+                scriptData = JSON.parse(scriptJson);
+            } catch (parseError) {
+                console.error(`❌ [PodcastService] Invalid JSON response from Gemini:`, scriptJson);
+                console.error(`❌ [PodcastService] Parse error:`, parseError);
+                const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parse error';
+                throw new Error(`Invalid JSON response from Gemini API: ${errorMessage}`);
+            }
+
+            // Validate required fields
+            if (!scriptData.speaker1 || !scriptData.speaker2 || !scriptData.text) {
+                console.error(`❌ [PodcastService] Missing required fields in script data:`, scriptData);
+                throw new Error('Missing required fields in script data (speaker1, speaker2, text)');
+            }
+
             const { speaker1, speaker2, text } = scriptData;
 
             const audioBuffer = await this.geminiClient.generateAudio(speaker1, speaker2, text);

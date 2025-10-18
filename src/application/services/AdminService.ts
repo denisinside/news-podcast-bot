@@ -140,12 +140,6 @@ export class AdminService implements IAdminService {
         const activeSubscriptions = allSubscriptions.filter(s => s.isActive);
         const allUsers = await this.userRepository.findAll();
 
-        console.log('Subscription statistics debug:', {
-            totalSubscriptions: allSubscriptions.length,
-            activeSubscriptions: activeSubscriptions.length,
-            allUsers: allUsers.length
-        });
-
         const averageSubscriptionsPerUser = allUsers.length > 0 
             ? activeSubscriptions.length / allUsers.length 
             : 0;
@@ -153,8 +147,6 @@ export class AdminService implements IAdminService {
         // Count subscriptions per topic
         const topicCounts = new Map<string, { name: string; count: number }>();
         const topics = await this.topicRepository.findAll();
-
-        console.log('Topics found:', topics.map(t => ({ id: t._id, name: t.name })));
 
         for (const subscription of activeSubscriptions) {
             // Handle both ObjectId and populated topicId
@@ -172,13 +164,6 @@ export class AdminService implements IAdminService {
                 topicName = topic?.name;
             }
             
-            console.log('Processing subscription:', {
-                subscriptionId: subscription._id,
-                topicId: topicId,
-                topicName: topicName,
-                isActive: subscription.isActive
-            });
-            
             if (topicName) {
                 if (topicCounts.has(topicId)) {
                     topicCounts.get(topicId)!.count++;
@@ -187,8 +172,6 @@ export class AdminService implements IAdminService {
                 }
             }
         }
-
-        console.log('Topic counts:', Array.from(topicCounts.entries()));
 
         const topicDistribution = Array.from(topicCounts.entries()).map(([topicId, data]) => ({
             topicId,

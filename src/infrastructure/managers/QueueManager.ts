@@ -153,26 +153,39 @@ export class QueueManager {
     }
 
     private async removeUserFromQueues(userId: string) {
-        // Remove from post queue
-        const postQueue = this.queueService.getQueue('post-publishing');
-        const postRepeatableJobs = await postQueue.getRepeatableJobs();
+        try {
+            // Remove from post queue
+            const postQueue = this.queueService.getQueue('post-publishing');
+            const postRepeatableJobs = await postQueue.getRepeatableJobs();
 
-        for (const job of postRepeatableJobs) {
-            if (job.name === `publish-post-${userId}`) {
-                await postQueue.removeRepeatableByKey(job.key);
-                console.log(`Removed post job for user ${userId}`);
+            for (const job of postRepeatableJobs) {
+                if (job.name === `publish-post-${userId}`) {
+                    await postQueue.removeRepeatableByKey(job.key);
+                    console.log(`Removed post job for user ${userId}`);
+                }
             }
-        }
 
-        // Remove from podcast queue
-        const podcastQueue = this.queueService.getQueue('podcast-generation');
-        const podcastRepeatableJobs = await podcastQueue.getRepeatableJobs();
+            // Remove from podcast queue
+            const podcastQueue = this.queueService.getQueue('podcast-generation');
+            const podcastRepeatableJobs = await podcastQueue.getRepeatableJobs();
 
-        for (const job of podcastRepeatableJobs) {
-            if (job.name === `generate-podcast-${userId}`) {
-                await podcastQueue.removeRepeatableByKey(job.key);
-                console.log(`Removed podcast job for user ${userId}`);
+            for (const job of podcastRepeatableJobs) {
+                if (job.name === `generate-podcast-${userId}`) {
+                    await podcastQueue.removeRepeatableByKey(job.key);
+                    console.log(`Removed podcast job for user ${userId}`);
+                }
             }
+
+            // Also remove any pending jobs for this user
+            const pendingJobs = await podcastQueue.getJobs(['waiting', 'delayed', 'active'], 0, 100);
+            for (const job of pendingJobs) {
+                if (job.data.userId === userId) {
+                    await job.remove();
+                    console.log(`Removed pending podcast job for user ${userId}`);
+                }
+            }
+        } catch (error) {
+            console.error(`Error removing user ${userId} from queues:`, error);
         }
     }
 
@@ -255,7 +268,13 @@ export class QueueManager {
             'podcast-generation',
             `generate-podcast-${userId}`,
             { userId },
-            intervalMs
+            intervalMs,
+            {
+                // Prevent duplicate jobs
+                jobId: `podcast-${userId}`,
+                // Add delay to prevent immediate execution
+                delay: Math.min(intervalMs, 60000), // At least 1 minute delay
+            }
         );
     }
 

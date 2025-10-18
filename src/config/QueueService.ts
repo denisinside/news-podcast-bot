@@ -91,6 +91,16 @@ export class QueueService  implements IQueueService  {
         options?: Omit<JobsOptions, 'repeat'>
     ) {
         const queue = this.getQueue(queueName);
+        
+        // Check if a repeatable job with the same name already exists
+        const existingJobs = await queue.getRepeatableJobs();
+        const existingJob = existingJobs.find(job => job.name === jobName);
+        
+        if (existingJob) {
+            console.log(`⚠️ [QueueService] Repeatable job ${jobName} already exists, removing old one`);
+            await queue.removeRepeatableByKey(existingJob.key);
+        }
+        
         return await queue.add(jobName, data, {
             ...options,
             repeat: {

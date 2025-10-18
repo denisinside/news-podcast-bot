@@ -18,9 +18,9 @@ export class GeminiClient implements IGeminiClient {
     async generateText(prompt: string): Promise<string> {
         try {
             const generationConfig = {
-                temperature: 1.2,
-                topP: 1,
-                topK: 1,
+                temperature: 0.7, // Reduced temperature for more consistent JSON output
+                topP: 0.8,
+                topK: 40,
                 maxOutputTokens: 8192,
                 safetySettings: [
                     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -41,14 +41,37 @@ export class GeminiClient implements IGeminiClient {
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 config: generationConfig
             });
+            
             if (!response || !response.candidates || !response.candidates[0]?.content || !response.candidates[0].content.parts || !response.candidates[0].content.parts[0].text) {
-                throw new Error('Failed to generate text with Gemini API.');
+                console.error('❌ [GeminiClient] Invalid response structure:', response);
+                throw new Error('Invalid response structure from Gemini API');
             }
-            const text = response.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
+
+            // Check for safety issues
+            if (response.candidates[0].finishReason === 'SAFETY') {
+                console.error('❌ [GeminiClient] Response blocked by safety filters');
+                throw new Error('Response blocked by safety filters');
+            }
+
+            let text = response.candidates[0].content.parts[0].text;
+            
+            // Clean up the response
+            text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            
+            // Try to extract JSON if it's wrapped in other text
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                text = jsonMatch[0];
+            }
+
+            console.log('✅ [GeminiClient] Successfully generated text response');
             return text;
         } catch (error) {
-            console.error('Error generating text with Gemini:', error);
-            throw new Error('Failed to generate text with Gemini API.');
+            console.error('❌ [GeminiClient] Error generating text with Gemini:', error);
+            if (error instanceof Error) {
+                throw new Error(`Failed to generate text with Gemini API: ${error.message}`);
+            }
+            throw new Error('Failed to generate text with Gemini API');
         }
     }
 

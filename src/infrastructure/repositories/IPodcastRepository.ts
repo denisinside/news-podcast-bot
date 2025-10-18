@@ -6,6 +6,8 @@ export interface IPodcastRepository {
     update(id: Types.ObjectId, data: { status?: string; fileUrl?: string }): Promise<IPodcast | null>;
     findById(id: string): Promise<IPodcast | null>;
     findByUserId(userId: string): Promise<IPodcast[]>;
+    findByUserIdAndStatus(userId: string, status: string): Promise<IPodcast | null>;
+    findRecentByUserId(userId: string, timeWindowMs: number): Promise<IPodcast | null>;
     findAll(): Promise<IPodcast[]>;
     delete(id: string): Promise<boolean>;
 }
