@@ -50,8 +50,6 @@ export class NewsQueueWorker extends BaseQueueWorker<NewsJobData> {
 
             console.log(`✅ Усі новини (${articles.length}) надіслані користувачу ${userId}`);
         } catch (error) {
-            console.error(`❌ Failed to generate/send news:`, error);
-
             const message = this.messageTemplateService.formatErrorNotification(
                 "Не вдалося згенерувати новини"
             );

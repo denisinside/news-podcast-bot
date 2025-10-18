@@ -131,7 +131,7 @@ export class NewsFinderService implements INewsFinderService {
         
         switch (userSettings.newsFrequency) {
             case NewsFrequency.HOURLY:
-                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour - 1, currentMinute, currentSecond, currentMillisecond);
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour - 1, 0, 0, 0);
                 
             case NewsFrequency.EVERY_3_HOURS:
                 // Find the last 3-hour interval (0, 3, 6, 9, 12, 15, 18, 21)
@@ -177,6 +177,7 @@ export class NewsFinderService implements INewsFinderService {
 
     async initAllStrategies(): Promise<void> {
         const topics = await this.topicRepository.findAll();
+        this.strategies.clear();
         for (const topic of topics) {
             const strategy = new RssSource(topic);
             this.strategies.set(topic.sourceUrl, strategy);

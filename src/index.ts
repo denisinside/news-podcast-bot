@@ -93,7 +93,7 @@ const scenes: IScene[] = [
     new MySubscriptionsScene(adminService, subscriptionService),
     new SettingsScene(userSettingsService, queueManager),
     new AdminMenuScene(adminService, adminMiddleware),
-    new AdminTopicsScene(adminService, adminMiddleware, bot.bot),
+    new AdminTopicsScene(adminService, adminMiddleware, newsFinderService, bot.bot),
     new AdminStatisticsScene(adminService, adminMiddleware),
     new AdminUsersScene(adminService, adminMiddleware, notificationService),
     new AdminBroadcastScene(adminService, adminMiddleware, bot.bot, notificationService),

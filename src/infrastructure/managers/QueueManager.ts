@@ -83,7 +83,7 @@ export class QueueManager {
         }
 
         await this.initializeAllUsers();
-        await this.addIntervalParsingNews(1000*60);
+        await this.addIntervalParsingNews(1000*60*30);
 
     }
 
@@ -171,9 +171,9 @@ export class QueueManager {
     private getIntervalFromFrequency(frequency: NewsFrequency): number {
         switch (frequency) {
             case NewsFrequency.HOURLY:
-                return 10 * 1000; // 1 hour
+                return 60 * 60 * 1000; // 1 hour
             case NewsFrequency.EVERY_3_HOURS:
-                return 90 * 1000; // 3 hours
+                return 3 * 60 * 60 * 1000; // 3 hours
             case NewsFrequency.TWICE_DAILY:
                 return 12 * 60 * 60 * 1000; // 12 hours
             case NewsFrequency.DAILY:

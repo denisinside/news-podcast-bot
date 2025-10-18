@@ -1,14 +1,13 @@
 import { SchedulingService } from '@application/services/SchedulingService';
 import { IUserRepository } from '@infrastructure/repositories/IUserRepository';
 import { ISubscriptionRepository } from '@infrastructure/repositories/ISubscriptionRepository';
-import { IQueueClient } from '@infrastructure/clients/IQueueClient';
 import { INewsFinderService } from '@application/interfaces/INewsFinderService';
 
 describe('SchedulingService', () => {
   let schedulingService: SchedulingService;
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockSubscriptionRepository: jest.Mocked<ISubscriptionRepository>;
-  let mockQueueClient: jest.Mocked<IQueueClient>;
+  let mockQueueClient: any;
   let mockNewsFinderService: jest.Mocked<INewsFinderService>;
 
   beforeEach(() => {
@@ -49,6 +48,8 @@ describe('SchedulingService', () => {
       getArticlesBySource: jest.fn(),
       cleanupOldArticles: jest.fn(),
       initAllStrategies: jest.fn(),
+      setNotificationService: jest.fn(),
+      getArticlesForUser: jest.fn(),
     };
 
     schedulingService = new SchedulingService(

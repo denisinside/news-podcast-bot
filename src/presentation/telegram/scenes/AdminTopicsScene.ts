@@ -4,6 +4,7 @@ import { IBotContext } from "@context/IBotContext";
 import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
 import { AdminMiddleware } from "@infrastructure/middleware/AdminMiddleware";
+import { INewsFinderService } from "@/application/interfaces/INewsFinderService";
 
 interface SessionData {
     action?: 'create' | 'edit' | 'delete';
@@ -19,6 +20,7 @@ export class AdminTopicsScene implements IScene {
     constructor(
         private readonly adminService: IAdminService,
         private readonly adminMiddleware: AdminMiddleware,
+        private readonly newsFinderService: INewsFinderService,
         private readonly bot: Telegraf<IBotContext>
     ) {
         this.scene = new BaseScene<IBotContext>(this.name);
@@ -188,6 +190,7 @@ export class AdminTopicsScene implements IScene {
                 const result = await this.adminService.deleteTopicWithSubscriptions(topicId);
                 
                 if (result.success) {
+                    await this.newsFinderService.initAllStrategies();
                     await ctx.reply(
                         `✅ *Топік успішно видалено!*\n\n` +
                         `📰 Тема: *${topicName}*\n` +
@@ -270,6 +273,7 @@ export class AdminTopicsScene implements IScene {
                 } else if (sessionData.step === 'url') {
                     try {
                         const topic = await this.adminService.createTopic(sessionData.topicName!, text);
+                        await this.newsFinderService.initAllStrategies();
                         await ctx.reply(`✅ Топік "${topic.name}" успішно створено!`);
                         sessionData.action = undefined;
                         sessionData.step = undefined;
@@ -284,6 +288,7 @@ export class AdminTopicsScene implements IScene {
                 if (sessionData.step === 'name') {
                     try {
                         await this.adminService.updateTopic(sessionData.topicId!, { name: text });
+                        await this.newsFinderService.initAllStrategies();
                         await ctx.reply("✅ Назву топіку успішно змінено!");
                         sessionData.action = undefined;
                         sessionData.step = undefined;
@@ -296,6 +301,7 @@ export class AdminTopicsScene implements IScene {
                 } else if (sessionData.step === 'url') {
                     try {
                         await this.adminService.updateTopic(sessionData.topicId!, { sourceUrl: text });
+                        await this.newsFinderService.initAllStrategies();
                         await ctx.reply("✅ URL джерела успішно змінено!");
                         sessionData.action = undefined;
                         sessionData.step = undefined;

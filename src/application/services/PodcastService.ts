@@ -42,80 +42,55 @@ export class PodcastService {
 
     async generateForUser(userId: string): Promise<string> {
         try {            
-            console.log(`🎙️ [PodcastService] Starting podcast generation for user ${userId}`);
-            
-            console.log(`📋 [PodcastService] Step 1: Fetching subscriptions for user ${userId}`);
             const subscriptions = await this.subscriptionRepository.findByUserId(userId);
             
             if (subscriptions.length === 0) {
                 console.error(`❌ [PodcastService] User ${userId} has no subscriptions`);
                 throw new Error('User has no subscriptions');
             }
-            console.log(`✅ [PodcastService] Step 1 completed: Found ${subscriptions.length} subscriptions`);
 
-            console.log(`📰 [PodcastService] Step 2: Getting articles for podcast`);
             const articles = await this.getArticlesForPodcast(subscriptions);
 
             if (articles.length === 0) {
                 console.error(`❌ [PodcastService] No recent articles found for user ${userId} subscriptions`);
                 throw new Error('No recent articles found for user subscriptions');
             }
-            console.log(`✅ [PodcastService] Step 2 completed: Found ${articles.length} articles`);
 
-            console.log(`💾 [PodcastService] Step 3: Creating podcast record in database`);
             const podcast = await this.podcastRepository.create({
                 userId,
                 articles: articles.map(article => article._id as Types.ObjectId)
             });
-            console.log(`✅ [PodcastService] Step 3 completed: Created podcast record with ID: ${podcast._id}`);
 
-            console.log(`🔄 [PodcastService] Step 4: Updating podcast status to GENERATING`);
             await this.podcastRepository.update(podcast._id as Types.ObjectId, {
                 status: PodcastStatus.GENERATING
             });
-            console.log(`✅ [PodcastService] Step 4 completed: Status updated to GENERATING`);
 
-            console.log(`📝 [PodcastService] Step 5: Generating podcast script`);
             const scriptJson = await this.generatePodcastScript(articles);
-            console.log(`✅ [PodcastService] Step 5 completed: Generated script JSON`);
             
-            console.log(`🔍 [PodcastService] Step 6: Parsing script data`);
             const scriptData = JSON.parse(scriptJson);
             const { speaker1, speaker2, text } = scriptData;
-            console.log(`✅ [PodcastService] Step 6 completed: Parsed script data - Speaker1: ${speaker1.name}, Speaker2: ${speaker2.name}`);
 
-            console.log(`🎵 [PodcastService] Step 7: Generating audio with Gemini`);
             const audioBuffer = await this.geminiClient.generateAudio(speaker1, speaker2, text);
-            console.log(`✅ [PodcastService] Step 7 completed: Generated audio buffer (${audioBuffer.length} bytes)`);
 
-            console.log(`🔄 [PodcastService] Step 8: Converting audio to MP3`);
             const mp3Buffer = await this.convertToMp3(audioBuffer);
-            console.log(`✅ [PodcastService] Step 8 completed: Converted to MP3 (${mp3Buffer.length} bytes)`);
 
-            console.log(`📁 [PodcastService] Step 9: Generating filename and uploading to storage`);
             const fileName = this.generatePodcastFileName(subscriptions);
-            console.log(`📁 [PodcastService] Generated filename: ${fileName}`);
             
             const fileUrl = await this.storageClient.upload(mp3Buffer, fileName);
-            console.log(`✅ [PodcastService] Step 9 completed: Uploaded to storage: ${fileUrl}`);
 
-            console.log(`💾 [PodcastService] Step 10: Updating podcast status to READY`);
             await this.podcastRepository.update(podcast._id as any, {
                 status: 'READY',
                 fileUrl
             });
-            console.log(`✅ [PodcastService] Step 10 completed: Status updated to READY`);
 
             // Send podcast notification to user
             if (this.notificationService) {
                 try {
-                    console.log(`📢 [PodcastService] Step 11: Sending podcast notification to user ${userId}`);
                     // Get topic names for the podcast
                     const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
                     const topicNames = validSubscriptions.map(sub => (sub.topicId as any).name || 'Невідома тема');
                     
                     const result = await this.notificationService.sendPodcastToUser(userId, fileUrl, topicNames);
-                    console.log(`✅ [PodcastService] Step 11 completed: Notification sent successfully: ${result.success ? 'SUCCESS' : 'FAILED'}`);
                 } catch (notificationError) {
                     console.error(`❌ [PodcastService] Error sending podcast notification to user ${userId}:`, notificationError);
                 }
@@ -133,7 +108,6 @@ export class PodcastService {
 
     private convertToMp3(inputBuffer: Buffer): Promise<Buffer> {
         return new Promise((resolve, reject) => {
-            console.log(`🔄 [PodcastService] Step 8.1: Starting MP3 conversion (input: ${inputBuffer.length} bytes)`);
             
             if (!inputBuffer || inputBuffer.length === 0) {
                 console.error(`❌ [PodcastService] Input buffer is empty or invalid`);
@@ -155,7 +129,6 @@ export class PodcastService {
                 }
             });
 
-            console.log(`🔄 [PodcastService] Step 8.2: Running FFmpeg conversion`);
             ffmpeg(readableStream)
                 .inputFormat('s16le')
                 .inputOptions([
@@ -171,7 +144,6 @@ export class PodcastService {
                 })
                 .on('end', () => {
                     const outputBuffer = Buffer.concat(outputBuffers);
-                    console.log(`✅ [PodcastService] Step 8.2 completed: MP3 conversion finished (output: ${outputBuffer.length} bytes)`);
                     resolve(outputBuffer);
                 })
                 .pipe(writableStream, { end: true });
@@ -180,10 +152,8 @@ export class PodcastService {
 
     private async getArticlesForPodcast(subscriptions: ISubscription[]): Promise<IArticle[]> {
         try {
-            console.log(`📋 [PodcastService] Step 2.1: Filtering valid subscriptions`);
             // Filter out subscriptions with deleted topics
             const validSubscriptions = subscriptions.filter(sub => sub.topicId !== null);
-            console.log(`✅ [PodcastService] Step 2.1 completed: ${validSubscriptions.length} valid subscriptions`);
             
             const topicIds = validSubscriptions.map(sub => {
                 // Handle populated topicId (object) vs non-populated (ObjectId)
@@ -193,15 +163,12 @@ export class PodcastService {
                 return String(sub.topicId);
             }).filter(id => id !== 'null');
             
-            console.log(`📅 [PodcastService] Step 2.2: Fetching articles from last 24 hours`);
             // Get articles from the last 24 hours
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             
             const recentArticles = await this.articleRepository.findByDateRange(yesterday, new Date());
-            console.log(`✅ [PodcastService] Step 2.2 completed: Found ${recentArticles.length} articles from the last 24 hours`);
             
-            console.log(`🔍 [PodcastService] Step 2.3: Filtering articles by topic IDs`);
             // Filter articles by topic IDs and sort by publication date
             const filteredArticles = recentArticles
                 .filter(article => {
@@ -212,12 +179,9 @@ export class PodcastService {
                 })
                 .sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime());
             
-            console.log(`✅ [PodcastService] Step 2.3 completed: Filtered to ${filteredArticles.length} articles matching user topics`);
                     
-            console.log(`🎯 [PodcastService] Step 2.4: Distributing articles across topics`);
             // Distribute articles evenly across topics (max 10 articles total)
             const distributedArticles = this.distributeArticlesAcrossTopics(filteredArticles, validSubscriptions, 10);
-            console.log(`✅ [PodcastService] Step 2.4 completed: Final selection: ${distributedArticles.length} articles for podcast`);
             
             return distributedArticles;
         } catch (error) {
@@ -285,13 +249,11 @@ export class PodcastService {
             .sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime())
             .slice(0, maxArticles);
 
-        console.log(`PodcastService: Final selection: ${finalArticles.length} articles for podcast`);
         return finalArticles;
     }
 
     private async generatePodcastScript(articles: IArticle[]): Promise<string> {
         try {
-            console.log(`📝 [PodcastService] Step 5.1: Grouping articles by topic`);
             // Group articles by topic for better organization
             const articlesByTopic = new Map<string, IArticle[]>();
             
@@ -302,9 +264,7 @@ export class PodcastService {
                 }
                 articlesByTopic.get(topicName)!.push(article);
             });
-            console.log(`✅ [PodcastService] Step 5.1 completed: Grouped articles into ${articlesByTopic.size} topics`);
 
-            console.log(`📝 [PodcastService] Step 5.2: Creating organized text by topics`);
             // Create organized text by topics
             const organizedText = Array.from(articlesByTopic.entries())
                 .map(([topicName, topicArticles]) => {
@@ -317,9 +277,7 @@ export class PodcastService {
 
             const truncatedText = organizedText.length > 15000 ? organizedText.substring(0, 15000) : organizedText;
             const topicNames = Array.from(articlesByTopic.keys()).join(', ');
-            console.log(`✅ [PodcastService] Step 5.2 completed: Created organized text (${truncatedText.length} chars) for topics: ${topicNames}`);
 
-            console.log(`🤖 [PodcastService] Step 5.3: Calling Gemini API to generate script`);
             const prompt = `Ти — ведучий новинного подкасту. Створи сценарій для аудіо-дайджесту новин українською мовою на основі наданих статей.
 
 ВАЖЛИВО: У подкасті ОБОВ'ЯЗКОВО має бути згадана хоча б одна новина з кожного з наступних топіків: ${topicNames}
@@ -384,9 +342,7 @@ ${truncatedText}
 ---
 `;
 
-            const scriptJson = await this.geminiClient.generateText(prompt);
-            console.log(`✅ [PodcastService] Step 5.3 completed: Received script from Gemini API`);
-            
+            const scriptJson = await this.geminiClient.generateText(prompt);            
             return scriptJson;
         } catch (error) {
             console.error(`❌ [PodcastService] Error generating podcast script:`, error);

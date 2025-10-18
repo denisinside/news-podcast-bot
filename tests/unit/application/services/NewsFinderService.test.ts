@@ -52,6 +52,7 @@ describe('NewsFinderService', () => {
       createDefaultSettings: jest.fn(),
       updateNewsFrequency: jest.fn(),
       updateAudioPodcasts: jest.fn(),
+      getAllUserSettings: jest.fn(),
     };
 
     mockNotificationService = {
