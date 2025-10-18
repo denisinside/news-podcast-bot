@@ -1,16 +1,45 @@
 import {BaseQueueWorker} from "@/workers/BaseQueueWorker";
 import {IConfigService, IQueueService} from "@/config";
-import {PodcastJobData, PodcastQueueWorker} from "@/workers/PodcastQueueWorker";
-import {PostJobData, PostQueueWorker} from "@/workers/PostQueueWorker";
+import {NewsQueueWorker} from "@/workers/NewsQueueWorker";
+import {PodcastQueueWorker} from "@/workers/PodcastQueueWorker";
+import {
+    IMessageTemplateService,
+    INewsFinderService,
+    INotificationService,
+    IPodcastService
+} from "@application/interfaces";
+import {IUserSettingsService} from "@application/interfaces/IUserSettingsService";
+import {NewsFrequency} from "@/models";
 
 export class QueueManager {
     private workers: BaseQueueWorker[] = [];
     private isInitialized = false;
+    private readonly queueService: IQueueService;
+    private readonly messageTemplateService: IMessageTemplateService;
+    private readonly notificationService: INotificationService;
+    private readonly configService: IConfigService;
+    private readonly newsFinderService: INewsFinderService;
+    private readonly userSettingsService: IUserSettingsService;
+    private readonly podcastService: IPodcastService;
 
     constructor(
-        private queueService: IQueueService,
-        private configService: IConfigService
-    ) {}
+        queueService: IQueueService,
+        configService: IConfigService,
+        notificationService: INotificationService,
+        messageTemplateService: IMessageTemplateService,
+        newsFinderService: INewsFinderService,
+        userSettingsService: IUserSettingsService,
+        podcastService: IPodcastService
+    ) {
+        this.queueService = queueService;
+        this.configService = configService;
+        this.notificationService = notificationService;
+        this.messageTemplateService = messageTemplateService;
+        this.newsFinderService = newsFinderService;
+        this.userSettingsService = userSettingsService;
+        this.newsFinderService = newsFinderService;
+        this.podcastService = podcastService;
+    }
 
     public async initialize() {
         if (this.isInitialized) {
@@ -20,62 +49,198 @@ export class QueueManager {
 
         console.log('Initializing queue workers...');
 
-        const podcastWorker = new PodcastQueueWorker(this.configService);
-        const postWorker = new PostQueueWorker(this.configService);
+        const podcastWorker = new PodcastQueueWorker(this.configService, this.podcastService);
+        const newsWorker = new NewsQueueWorker(
+            this.configService,
+            this.notificationService,
+            this.messageTemplateService,
+            this.newsFinderService
+        );
 
-        this.workers.push(podcastWorker, postWorker);
+        this.workers.push(podcastWorker, newsWorker);
 
         this.isInitialized = true;
         console.log('Queue workers initialized successfully');
+
+        // Clean up old repeatable jobs
+        const postQueue = this.queueService.getQueue("post-publishing");
+        const postRepeatableJobs = await postQueue.getRepeatableJobs();
+
+        for (const job of postRepeatableJobs) {
+            await postQueue.removeRepeatableByKey(job.key);
+            console.log(`Removed repeatable job: ${job.name}`);
+        }
+
+        const podcastQueue = this.queueService.getQueue("podcast-generation");
+        const podcastRepeatableJobs = await podcastQueue.getRepeatableJobs();
+
+        for (const job of podcastRepeatableJobs) {
+            await podcastQueue.removeRepeatableByKey(job.key);
+            console.log(`Removed repeatable podcast job: ${job.name}`);
+        }
+
+        await this.initializeAllUsers();
+
     }
 
-    public async schedulePodcast(data: PodcastJobData, scheduledAt: Date) {
-        return await this.queueService.addScheduledJob(
-            'podcast-generation',
-            'generate-podcast',
-            data,
-            scheduledAt
-        );
+    public async initializeUser(userId: string) {
+        console.log(`Initializing user ${userId} in queue...`);
+
+        const settings = await this.userSettingsService.getUserSettings(parseInt(userId));
+
+        if (!settings) {
+            console.error(`Settings not found for user ${userId}`);
+            return;
+        }
+
+        // Remove existing jobs for this user
+        await this.removeUserFromQueues(userId);
+
+        // Add user to news queue based on their news frequency setting
+        if (settings.newsFrequency !== NewsFrequency.DISABLED) {
+            const intervalMs = this.getIntervalFromFrequency(settings.newsFrequency);
+            await this.addIntervalPost(userId, intervalMs);
+            console.log(`User ${userId} initialized with ${settings.newsFrequency} frequency (${intervalMs}ms)`);
+        } else {
+            console.log(`User ${userId} has news disabled`);
+        }
+
+        // Add user to podcast queue if enabled
+        if (settings.enableAudioPodcasts) {
+            await this.addIntervalPodcast(userId, this.getIntervalFromFrequency(settings.newsFrequency));
+            console.log(`User ${userId} initialized with podcasts enabled`);
+        } else {
+            console.log(`User ${userId} has podcasts disabled`);
+        }
     }
 
-    public async addPodcast(data: PodcastJobData) {
-        const queue = this.queueService.getQueue('podcast-generation');
-        return await queue.add('generate-podcast', data);
+    public async initializeAllUsers() {
+        console.log('Initializing all users in queue...');
+
+        try {
+            // Get all user settings from database
+            const allSettings = await this.userSettingsService.getAllUserSettings();
+
+            console.log(`Found ${allSettings.length} users to initialize`);
+
+            for (const settings of allSettings) {
+                try {
+                    await this.initializeUser(settings.userId.toString());
+                } catch (error) {
+                    console.error(`Failed to initialize user ${settings.userId}:`, error);
+                    // Continue with other users even if one fails
+                }
+            }
+
+            console.log('All users initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize all users:', error);
+            throw error;
+        }
     }
 
-    public async schedulePost(data: PostJobData, scheduledAt: Date) {
+    private async removeUserFromQueues(userId: string) {
+        // Remove from post queue
+        const postQueue = this.queueService.getQueue('post-publishing');
+        const postRepeatableJobs = await postQueue.getRepeatableJobs();
+
+        for (const job of postRepeatableJobs) {
+            if (job.name === `publish-post-${userId}`) {
+                await postQueue.removeRepeatableByKey(job.key);
+                console.log(`Removed post job for user ${userId}`);
+            }
+        }
+
+        // Remove from podcast queue
+        const podcastQueue = this.queueService.getQueue('podcast-generation');
+        const podcastRepeatableJobs = await podcastQueue.getRepeatableJobs();
+
+        for (const job of podcastRepeatableJobs) {
+            if (job.name === `generate-podcast-${userId}`) {
+                await podcastQueue.removeRepeatableByKey(job.key);
+                console.log(`Removed podcast job for user ${userId}`);
+            }
+        }
+    }
+
+
+    private getIntervalFromFrequency(frequency: NewsFrequency): number {
+        switch (frequency) {
+            case NewsFrequency.HOURLY:
+                return 60 * 60 * 1000; // 1 hour
+            case NewsFrequency.EVERY_3_HOURS:
+                return 3 * 60 * 60 * 1000; // 3 hours
+            case NewsFrequency.TWICE_DAILY:
+                return 12 * 60 * 60 * 1000; // 12 hours
+            case NewsFrequency.DAILY:
+                return 24 * 60 * 60 * 1000; // 24 hours
+            default:
+                return 24 * 60 * 60 * 1000; // Default to daily
+        }
+    }
+
+    // Post queue methods
+    public async schedulePost(userId: string, scheduledAt: Date) {
         return await this.queueService.addScheduledJob(
             'post-publishing',
             'publish-post',
-            data,
+            { userId },
             scheduledAt
         );
     }
 
     public async addRecurringPost(
-        data: PostJobData,
-        cronPattern: string // '0 9 * * *' - щодня о 9:00
+        userId: string,
+        cronPattern: string
     ) {
         return await this.queueService.addRecurringJob(
             'post-publishing',
             'publish-post',
-            data,
+            { userId },
             cronPattern
         );
     }
 
     public async addIntervalPost(
-        data: PostJobData,
-        intervalMs: number // кожні 3 години = 3 * 60 * 60 * 1000
+        userId: string,
+        intervalMs: number
     ) {
         return await this.queueService.addIntervalJob(
             'post-publishing',
-            'publish-post',
-            data,
+            `publish-post-${userId}`,
+            { userId },
             intervalMs
         );
     }
 
+    // Podcast queue methods
+    public async schedulePodcast(userId: string, scheduledAt: Date) {
+        return await this.queueService.addScheduledJob(
+            'podcast-generation',
+            'generate-podcast',
+            { userId },
+            scheduledAt
+        );
+    }
+
+    public async addIntervalPodcast(
+        userId: string,
+        intervalMs: number
+    ) {
+        return await this.queueService.addIntervalJob(
+            'podcast-generation',
+            `generate-podcast-${userId}`,
+            { userId },
+            intervalMs
+        );
+    }
+
+    public async addPodcast(userId: string) {
+        const queue = this.queueService.getQueue('podcast-generation');
+        return await queue.add('generate-podcast', { userId });
+    }
+
+    // Queue management methods
     public async getScheduledPosts() {
         return await this.queueService.getRecurringJobs('post-publishing');
     }

@@ -1,77 +1,36 @@
 import { Job } from 'bullmq';
 import { BaseQueueWorker } from './BaseQueueWorker';
 import { IConfigService } from '@/config';
+import { IPodcastService} from "@application/interfaces";
 
 export interface PodcastJobData {
-    podcastId: string;
-    title: string;
-    content: string;
-    userId: string;
-    scheduledAt?: Date;
-    publishImmediately?: boolean;
+   userId: string;
 }
 
 export class PodcastQueueWorker extends BaseQueueWorker<PodcastJobData> {
-    constructor(configService: IConfigService) {
+
+    private readonly podcastService: IPodcastService;
+
+    constructor(configService: IConfigService,
+                podcastService: IPodcastService) {
         super('podcast-generation', configService);
+        this.podcastService = podcastService;
     }
 
     protected async processJob(job: Job<PodcastJobData>): Promise<void> {
-        const { podcastId, title, content, userId, publishImmediately } = job.data;
+        const { userId } = job.data;
 
         try {
-            await job.updateProgress(10);
-            console.log(`Processing podcast: ${title} for user ${userId}`);
-
-            // 1. Генерація аудіо
-            await job.updateProgress(30);
-            await this.generateAudio(content);
-
-            // 2. Обробка метаданих
-            await job.updateProgress(60);
-            await this.processMetadata(podcastId, title);
-
-            // 3. Збереження результату
-            await job.updateProgress(80);
-            await this.savePodcast(podcastId, userId);
-
-            // 4. Публікація (якщо потрібно)
-            if (publishImmediately) {
-                await job.updateProgress(90);
-                await this.publishPodcast(podcastId, userId);
-            }
+            await this.podcastService.generateForUser(userId);
 
             await job.updateProgress(100);
-            console.log(`Podcast ${podcastId} processed successfully`);
+            console.log(`Podcast processed successfully`);
         } catch (error) {
-            console.error(`Error processing podcast ${podcastId}:`, error);
+            console.error('Error processing podcast :', error);
             throw error;
         }
     }
 
-    private async generateAudio(content: string): Promise<void> {
-        await this.delay(2000);
-        console.log('Audio generated');
-    }
-
-    private async processMetadata(podcastId: string, title: string): Promise<void> {
-        await this.delay(1000);
-        console.log('Metadata processed');
-    }
-
-    private async savePodcast(podcastId: string, userId: string): Promise<void> {
-        await this.delay(1000);
-        console.log('Podcast saved to database');
-    }
-
-    private async publishPodcast(podcastId: string, userId: string): Promise<void> {
-        await this.delay(1000);
-        console.log('Podcast published');
-    }
-
-    private delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
 
     protected getConcurrency(): number {
         return 3;

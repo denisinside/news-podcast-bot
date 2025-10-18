@@ -7,7 +7,7 @@ export abstract class BaseQueueWorker<T = any> {
 
     constructor(
         queueName: string,
-        private configService: IConfigService
+        private readonly configService: IConfigService
     ) {
         this.queueName = queueName;
 

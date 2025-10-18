@@ -70,8 +70,8 @@
 
 ### **workers/**
 Фонові задачі (background jobs):
-- `NewsFetcherProcessor.ts` – обробник новин.
-- `PodcastGeneratorProcessor.ts` – обробник подкастів.
+- `NewsQueueWorker.ts` – обробник новин.
+- `PodcastQueueWorker.ts` – обробник подкастів.
 - `index.ts` – точка входу для воркерів.
 
 ---

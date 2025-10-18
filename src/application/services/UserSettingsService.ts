@@ -48,5 +48,12 @@ export class UserSettingsService implements IUserSettingsService {
             { upsert: true, new: true }
         );
     }
+
+    async getAllUserSettings(): Promise<IUserSettings[]> {
+        console.log('Getting all user settings');
+
+        const settings = await UserSettings.find({});
+        return settings;
+    }
 }
 

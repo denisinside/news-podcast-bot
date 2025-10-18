@@ -54,7 +54,6 @@ const articleRepository: IArticleRepository = new ArticleRepository();
 const subscriptionRepository: ISubscriptionRepository = new SubscriptionRepository();
 const podcastRepository: IPodcastRepository = new PodcastRepository();
 const queueService: IQueueService = new QueueService(config);
-const queueManager = new QueueManager(queueService, config);
 const storageClient: IFileStorageClient = new FileStorageClient();
 const geminiClient: IGeminiClient = new GeminiClient(config.get('GEMINI_API_KEY'));
 const newsFinderService: INewsFinderService = new NewsFinderService(articleRepository, topicRepository);
@@ -75,10 +74,13 @@ const bot = new NewsPodcastBot(config, commands, []);
 const messageTemplateService = new MessageTemplateService();
 const notificationService = new NotificationService(bot.bot, subscriptionRepository, messageTemplateService);
 
+
 // Set notification service in other services
 newsFinderService.setNotificationService(notificationService);
 podcastService.setNotificationService(notificationService);
 notificationService.setPodcastService(podcastService);
+
+const queueManager = new QueueManager( queueService, config, notificationService, messageTemplateService, newsFinderService,userSettingsService, podcastService);
 
 const scenes: IScene[] = [
     new StartScene(adminService, subscriptionService, userService),
@@ -95,3 +97,5 @@ const scenes: IScene[] = [
 
 bot.scenes = scenes;
 bot.init();
+
+queueManager.initialize();
