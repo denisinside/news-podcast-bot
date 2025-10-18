@@ -83,23 +83,6 @@ export class NewsFinderService implements INewsFinderService {
 
             console.log(`Saved ${savedArticles.length} new articles for topic: ${topic.name}`);
 
-            // Send notifications to subscribers for each new article
-            if (this.notificationService && savedArticles.length > 0) {
-                console.log(`Sending notifications for ${savedArticles.length} new articles in topic: ${topic.name}`);
-
-                for (const article of savedArticles) {
-                    try {
-                        const result = await this.notificationService.sendNewsToSubscribers(topic.id, article);
-                        console.log(`News notification sent: ${result.sent} users, ${result.failed} failed`);
-
-                        if (result.errors.length > 0) {
-                            console.warn('Notification errors:', result.errors);
-                        }
-                    } catch (notificationError) {
-                        console.error(`Failed to send notification for article ${article._id}:`, notificationError);
-                    }
-                }
-            }
         } catch (error) {
             console.error(`Error processing topic ${topic.name}:`, error);
         }

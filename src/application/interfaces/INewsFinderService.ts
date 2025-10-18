@@ -13,4 +13,5 @@ export interface INewsFinderService {
     cleanupOldArticles(daysOld: number): Promise<number>;
     initAllStrategies(): Promise<void>;
     setNotificationService(notificationService: INotificationService): void;
+    getArticlesForUser(userId:string): Promise<IArticle[]>;
 }

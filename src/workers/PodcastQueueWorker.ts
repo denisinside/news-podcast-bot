@@ -23,7 +23,6 @@ export class PodcastQueueWorker extends BaseQueueWorker<PodcastJobData> {
         try {
             await this.podcastService.generateForUser(userId);
 
-            await job.updateProgress(100);
             console.log(`Podcast processed successfully`);
         } catch (error) {
             console.error('Error processing podcast :', error);

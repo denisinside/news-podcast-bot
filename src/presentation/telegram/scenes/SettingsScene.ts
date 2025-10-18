@@ -4,16 +4,20 @@ import { IBotContext } from "../../../context/IBotContext";
 import { Markup, Scenes } from "telegraf";
 import { IUserSettingsService } from "../../../application/interfaces/IUserSettingsService";
 import { NewsFrequency } from "../../../models/UserSettings";
+import {QueueManager} from "@infrastructure/managers/QueueManager";
 
 export class SettingsScene implements IScene {
     private readonly scene: Scenes.BaseScene<IBotContext>;
+    private readonly queueManager: QueueManager;
     name: string = "settings";
 
     constructor(
-        private readonly userSettingsService: IUserSettingsService
+        private readonly userSettingsService: IUserSettingsService,
+        queueManager: QueueManager
     ) {
         this.scene = new Scenes.BaseScene<IBotContext>(this.name);
         this.registerHandlers();
+        this.queueManager = queueManager;
     }
 
     getScene(): BaseScene<IBotContext> {
@@ -34,6 +38,7 @@ export class SettingsScene implements IScene {
     private async showMainSettings(ctx: any) {
         const userId = ctx.from!.id;
         const settings = await this.userSettingsService.getUserSettings(userId);
+        await this.queueManager.initializeUser(String(userId));
 
         if (!settings) {
             await ctx.reply("❌ Помилка завантаження налаштувань");
@@ -131,6 +136,8 @@ export class SettingsScene implements IScene {
                 const userId = ctx.from!.id;
 
                 await this.userSettingsService.updateNewsFrequency(userId, frequency);
+                await this.queueManager.initializeUser(String(userId));
+
 
                 await ctx.editMessageText(
                     `✅ *Частоту новин оновлено!*\n\n` +
@@ -187,6 +194,7 @@ export class SettingsScene implements IScene {
                 const userId = ctx.from!.id;
 
                 await this.userSettingsService.updateAudioPodcasts(userId, enabled);
+                await this.queueManager.initializeUser(String(userId));
 
                 await ctx.editMessageText(
                     `${enabled ? '✅' : '❌'} *Налаштування збережено!*\n\n` +

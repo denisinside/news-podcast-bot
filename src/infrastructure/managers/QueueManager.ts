@@ -10,6 +10,8 @@ import {
 } from "@application/interfaces";
 import {IUserSettingsService} from "@application/interfaces/IUserSettingsService";
 import {NewsFrequency} from "@/models";
+import {NewsParserQueueWorker} from "@/workers/NewsParserQueueWorker";
+import {toString} from "bullmq";
 
 export class QueueManager {
     private workers: BaseQueueWorker[] = [];
@@ -48,6 +50,7 @@ export class QueueManager {
         }
 
         console.log('Initializing queue workers...');
+        const newsParserWorker = new NewsParserQueueWorker(this.configService, this.newsFinderService);
 
         const podcastWorker = new PodcastQueueWorker(this.configService, this.podcastService);
         const newsWorker = new NewsQueueWorker(
@@ -57,7 +60,7 @@ export class QueueManager {
             this.newsFinderService
         );
 
-        this.workers.push(podcastWorker, newsWorker);
+        this.workers.push(podcastWorker, newsWorker, newsParserWorker);
 
         this.isInitialized = true;
         console.log('Queue workers initialized successfully');
@@ -80,6 +83,7 @@ export class QueueManager {
         }
 
         await this.initializeAllUsers();
+        await this.addIntervalParsingNews(1000*60);
 
     }
 
@@ -167,9 +171,9 @@ export class QueueManager {
     private getIntervalFromFrequency(frequency: NewsFrequency): number {
         switch (frequency) {
             case NewsFrequency.HOURLY:
-                return 60 * 60 * 1000; // 1 hour
+                return 10 * 1000; // 1 hour
             case NewsFrequency.EVERY_3_HOURS:
-                return 3 * 60 * 60 * 1000; // 3 hours
+                return 90 * 1000; // 3 hours
             case NewsFrequency.TWICE_DAILY:
                 return 12 * 60 * 60 * 1000; // 12 hours
             case NewsFrequency.DAILY:
@@ -209,6 +213,17 @@ export class QueueManager {
             'post-publishing',
             `publish-post-${userId}`,
             { userId },
+            intervalMs
+        );
+    }
+
+    public async addIntervalParsingNews(
+        intervalMs: number
+    ) {
+        return await this.queueService.addIntervalJob(
+            'news-parser',
+            `news-parser-job`,
+            { undefined },
             intervalMs
         );
     }

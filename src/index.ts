@@ -60,16 +60,16 @@ const podcastRepository: IPodcastRepository = new PodcastRepository();
 const queueService: IQueueService = new QueueService(config);
 const storageClient: IFileStorageClient = new FileStorageClient();
 const geminiClient: IGeminiClient = new GeminiClient(config.get('GEMINI_API_KEY'));
-const newsFinderService: INewsFinderService = new NewsFinderService(articleRepository, topicRepository);
 const advertisementRepository = new AdvertisementRepository();
 
-const adminService: IAdminService = new AdminService(topicRepository, userRepository, subscriptionRepository, podcastRepository, articleRepository, newsFinderService);
 const subscriptionService: ISubscriptionService = new SubscriptionService(subscriptionRepository);
 const userSettingsService: IUserSettingsService = new UserSettingsService();
 // const schedulingService = new SchedulingService(userRepository, subscriptionRepository, queueClient, newsFinderService);
 const podcastService = new PodcastService(podcastRepository, articleRepository, subscriptionRepository, storageClient, geminiClient);
 const userService: IUserService = new UserService(userRepository);
 const adminMiddleware = new AdminMiddleware(userRepository);
+const newsFinderService: INewsFinderService = new NewsFinderService(articleRepository, topicRepository, userSettingsService);
+const adminService: IAdminService = new AdminService(topicRepository, userRepository, subscriptionRepository, podcastRepository, articleRepository, newsFinderService);
 
 const commands: ICommand[] = [];
 const bot = new NewsPodcastBot(config, commands, []);
@@ -91,7 +91,7 @@ const scenes: IScene[] = [
     new SubscribeScene(adminService, subscriptionService, queueManager),
     new UnsubscribeScene(adminService, subscriptionService),
     new MySubscriptionsScene(adminService, subscriptionService),
-    new SettingsScene(userSettingsService),
+    new SettingsScene(userSettingsService, queueManager),
     new AdminMenuScene(adminService, adminMiddleware),
     new AdminTopicsScene(adminService, adminMiddleware, bot.bot),
     new AdminStatisticsScene(adminService, adminMiddleware),

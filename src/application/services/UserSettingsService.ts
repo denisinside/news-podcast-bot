@@ -2,7 +2,7 @@ import { IUserSettingsService } from "../interfaces/IUserSettingsService";
 import { IUserSettings, NewsFrequency, UserSettings } from "@/models";
 
 export class UserSettingsService implements IUserSettingsService {
-    
+
     async getUserSettings(userId: number): Promise<IUserSettings | null> {
         console.log(`Getting settings for user ${userId}`);
         
@@ -11,6 +11,7 @@ export class UserSettingsService implements IUserSettingsService {
         // Create default settings if they don't exist
         if (!settings) {
             return await this.createDefaultSettings(userId);
+
         }
         
         return settings;
@@ -31,7 +32,6 @@ export class UserSettingsService implements IUserSettingsService {
 
     async updateNewsFrequency(userId: number, frequency: NewsFrequency): Promise<void> {
         console.log(`Updating news frequency for user ${userId} to ${frequency}`);
-        
         await UserSettings.findOneAndUpdate(
             { userId },
             { newsFrequency: frequency },

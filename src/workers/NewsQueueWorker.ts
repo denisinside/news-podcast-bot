@@ -32,29 +32,35 @@ export class NewsQueueWorker extends BaseQueueWorker<NewsJobData> {
         console.log(`Generating news for user ${userId}`);
 
         try {
-            const articles: IArticle[] = await this.newsFinderService.getArticlesByKeywords(["україна"]);
+            const articles: IArticle[] = await this.newsFinderService.getArticlesForUser(userId);
 
-            const randomTestArticle: IArticle | undefined = articles.length > 0
-                ? articles[Math.floor(Math.random() * articles.length)]
-                : undefined;
-
-            if (!randomTestArticle) {
+            if (!articles.length) {
                 throw new Error("Жодних новин не знайдено за ключовими словами");
             }
 
-            const message = this.messageTemplateService.formatNewsNotification(randomTestArticle, "Новини про Ріната");
+            for (const article of articles) {
+                const message = this.messageTemplateService.formatNewsNotification(
+                    article,
+                    "Новини"
+                );
 
-            await this.notificationService.sendMessage(userId, message);
+                await this.notificationService.sendMessageWithMedia(userId, message.text, message.imageUrl,message.url);
+                console.log(`News sent to user ${userId}: ${article.title}`);
+            }
 
-            console.log(`News sent to user ${userId}`);
+            console.log(`✅ Усі новини (${articles.length}) надіслані користувачу ${userId}`);
         } catch (error) {
-            console.error(`Failed to generate/send news:`, error);
-            const message = this.messageTemplateService.formatErrorNotification("Не вдалося згенерувати новину");
+            console.error(`❌ Failed to generate/send news:`, error);
+
+            const message = this.messageTemplateService.formatErrorNotification(
+                "Не вдалося згенерувати новини"
+            );
 
             await this.notificationService.sendMessage(userId, message);
             throw error;
         }
     }
+
 
     protected getConcurrency(): number {
         return 3;
