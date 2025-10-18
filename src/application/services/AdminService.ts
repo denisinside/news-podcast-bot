@@ -140,6 +140,12 @@ export class AdminService implements IAdminService {
         const activeSubscriptions = allSubscriptions.filter(s => s.isActive);
         const allUsers = await this.userRepository.findAll();
 
+        console.log('Subscription statistics debug:', {
+            totalSubscriptions: allSubscriptions.length,
+            activeSubscriptions: activeSubscriptions.length,
+            allUsers: allUsers.length
+        });
+
         const averageSubscriptionsPerUser = allUsers.length > 0 
             ? activeSubscriptions.length / allUsers.length 
             : 0;
@@ -148,18 +154,41 @@ export class AdminService implements IAdminService {
         const topicCounts = new Map<string, { name: string; count: number }>();
         const topics = await this.topicRepository.findAll();
 
+        console.log('Topics found:', topics.map(t => ({ id: t._id, name: t.name })));
+
         for (const subscription of activeSubscriptions) {
-            const topicId = String(subscription.topicId);
-            const topic = topics.find(t => String(t._id) === topicId);
+            // Handle both ObjectId and populated topicId
+            let topicId: string;
+            let topicName: string | undefined;
             
-            if (topic) {
+            if (typeof subscription.topicId === 'object' && subscription.topicId !== null) {
+                // If topicId is populated (contains the full topic object)
+                topicId = String((subscription.topicId as any)._id);
+                topicName = (subscription.topicId as any).name;
+            } else {
+                // If topicId is just an ObjectId
+                topicId = String(subscription.topicId);
+                const topic = topics.find(t => String(t._id) === topicId);
+                topicName = topic?.name;
+            }
+            
+            console.log('Processing subscription:', {
+                subscriptionId: subscription._id,
+                topicId: topicId,
+                topicName: topicName,
+                isActive: subscription.isActive
+            });
+            
+            if (topicName) {
                 if (topicCounts.has(topicId)) {
                     topicCounts.get(topicId)!.count++;
                 } else {
-                    topicCounts.set(topicId, { name: topic.name, count: 1 });
+                    topicCounts.set(topicId, { name: topicName, count: 1 });
                 }
             }
         }
+
+        console.log('Topic counts:', Array.from(topicCounts.entries()));
 
         const topicDistribution = Array.from(topicCounts.entries()).map(([topicId, data]) => ({
             topicId,
@@ -211,6 +240,33 @@ export class AdminService implements IAdminService {
         return filteredArticles;
     }
 
+    async getTopicSubscribers(topicId: string): Promise<string[]> {
+        // Get all subscriptions and filter by topicId
+        const allSubscriptions = await this.subscriptionRepository.findAll();
+        const topicSubscriptions = allSubscriptions.filter(sub => {
+            if (typeof sub.topicId === 'object' && sub.topicId !== null) {
+                // If topicId is populated (contains the full topic object)
+                return String((sub.topicId as any)._id) === topicId && sub.isActive;
+            } else {
+                // If topicId is just an ObjectId
+                return String(sub.topicId) === topicId && sub.isActive;
+            }
+        });
+        
+        console.log('Topic subscribers debug:', {
+            topicId,
+            subscriptionsFound: topicSubscriptions.length,
+            subscriptions: topicSubscriptions.map(s => ({
+                id: s._id,
+                userId: s.userId,
+                topicId: typeof s.topicId === 'object' ? String((s.topicId as any)._id) : String(s.topicId),
+                isActive: s.isActive
+            }))
+        });
+        
+        return topicSubscriptions.map(sub => sub.userId);
+    }
+
     async triggerNewsParsing(): Promise<{ success: boolean; message: string }> {
         try {
             if (!this.newsFinderService) {
@@ -221,8 +277,8 @@ export class AdminService implements IAdminService {
             }
 
             await this.newsFinderService.fetchAndSaveAllTopics();
-            
-            return {
+        
+        return {
                 success: true,
                 message: "Парсинг новин запущено успішно"
             };

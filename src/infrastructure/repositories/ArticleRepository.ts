@@ -1,5 +1,6 @@
 import { Article, IArticle } from '@models/Article';
 import { IArticleRepository } from './IArticleRepository';
+import { Subscription } from '@models/Subscription';
 
 export class ArticleRepository implements IArticleRepository {
     async create(article: Partial<IArticle>): Promise<IArticle> {
@@ -62,6 +63,31 @@ export class ArticleRepository implements IArticleRepository {
 
     async findBySource(source: string): Promise<IArticle[]> {
         return await Article.find({ source }).populate('topicId').sort({ publicationDate: -1 });
+    }
+
+    async findByUserId(userId: string, sinceDate?: Date): Promise<IArticle[]> {
+        const subscriptions = await Subscription.find({ 
+            userId, 
+            isActive: true 
+        });
+        
+        if (subscriptions.length === 0) {
+            return [];
+        }
+        
+        const topicIds = subscriptions.map(sub => sub.topicId);
+        
+        const query: any = {
+            topicId: { $in: topicIds }
+        };
+        
+        if (sinceDate) {
+            query.publicationDate = { $gte: sinceDate };
+        }
+        
+        return await Article.find(query)
+            .populate('topicId')
+            .sort({ publicationDate: -1 });
     }
 
     async cleanupOldArticles(daysOld: number = 30): Promise<number> {

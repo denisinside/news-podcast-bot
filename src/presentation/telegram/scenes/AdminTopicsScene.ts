@@ -56,6 +56,25 @@ export class AdminTopicsScene implements IScene {
             await this.showTopicsList(ctx);
         });
 
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
+            }
+        });
+
         this.scene.action("add_topic", async (ctx) => {
             try {
                 await ctx.answerCbQuery();

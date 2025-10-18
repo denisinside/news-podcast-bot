@@ -55,6 +55,25 @@ export class AdminUsersScene implements IScene {
             await this.showUsersList(ctx);
         });
 
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
+            }
+        });
+
         this.scene.action(/^user_details_(.+)$/, async (ctx) => {
             try {
                 await ctx.answerCbQuery();
@@ -576,7 +595,13 @@ export class AdminUsersScene implements IScene {
             }
 
             // Get recent articles for user's topics
-            const topicIds = subscriptions.map(sub => String(sub.topicId)).filter(id => id !== 'null');
+            const topicIds = subscriptions.map(sub => {
+                // Handle populated topicId (object) vs non-populated (ObjectId)
+                if (sub.topicId && typeof sub.topicId === 'object' && (sub.topicId as any)._id) {
+                    return String((sub.topicId as any)._id);
+                }
+                return String(sub.topicId);
+            }).filter(id => id !== 'null');
             const articles = await this.adminService.getRecentArticlesByTopics(topicIds, 5);
 
             if (articles.length === 0) {
@@ -602,9 +627,9 @@ export class AdminUsersScene implements IScene {
             for (const article of articles) {
                 try {
                     const topicName = (article as any).topicId?.name || 'Невідома тема';
-                    const message = this.notificationService.messageTemplateService.formatNewsNotification(article, topicName);
+                    const messageData = this.notificationService.messageTemplateService.formatNewsNotification(article, topicName);
                     
-                    const result = await this.notificationService.sendMessage(userId, message, 'Markdown');
+                    const result = await this.notificationService.sendMessageWithMedia(userId, messageData.text, messageData.imageUrl, messageData.url);
                     
                     if (result.success) {
                         sentCount++;
@@ -647,7 +672,13 @@ export class AdminUsersScene implements IScene {
             }
 
             // Check if there are articles for user's topics
-            const topicIds = subscriptions.map(sub => String(sub.topicId)).filter(id => id !== 'null');
+            const topicIds = subscriptions.map(sub => {
+                // Handle populated topicId (object) vs non-populated (ObjectId)
+                if (sub.topicId && typeof sub.topicId === 'object' && (sub.topicId as any)._id) {
+                    return String((sub.topicId as any)._id);
+                }
+                return String(sub.topicId);
+            }).filter(id => id !== 'null');
             const articles = await this.adminService.getRecentArticlesByTopics(topicIds, 1);
 
             if (articles.length === 0) {

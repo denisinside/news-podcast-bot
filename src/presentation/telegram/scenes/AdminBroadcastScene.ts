@@ -70,6 +70,25 @@ export class AdminBroadcastScene implements IScene {
             );
         });
 
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
+            }
+        });
+
         this.scene.action("broadcast_all", async (ctx) => {
             try {
                 await ctx.answerCbQuery();
@@ -188,10 +207,21 @@ export class AdminBroadcastScene implements IScene {
                     recipientCount = users.filter(u => !u.isBlocked).length;
                     targetText = 'активним користувачам';
                 } else if (sessionData.targetType === 'topic' && sessionData.topicId) {
+                    // Get topic name and subscriber count directly
+                    const topic = (await this.adminService.getAllTopics()).find(t => String(t._id) === sessionData.topicId);
                     const subscriptions = await this.adminService.getSubscriptionStatistics();
                     const topicStats = subscriptions.topicDistribution.find(t => t.topicId === sessionData.topicId);
                     recipientCount = topicStats?.count || 0;
-                    targetText = `підписникам топіку "${topicStats?.topicName}"`;
+                    targetText = `підписникам топіку "${topic?.name || topicStats?.topicName || 'Невідомий топік'}"`;
+                    
+                    // Debug logging
+                    console.log('Broadcast topic debug:', {
+                        topicId: sessionData.topicId,
+                        topicName: topic?.name,
+                        topicStatsName: topicStats?.topicName,
+                        recipientCount,
+                        targetText
+                    });
                 }
 
                 await ctx.reply(
@@ -297,14 +327,13 @@ export class AdminBroadcastScene implements IScene {
                 const allUsers = await this.adminService.getAllUsers();
                 users = allUsers.filter(u => !u.isBlocked).map(u => u._id);
             } else if (sessionData.targetType === 'topic' && sessionData.topicId) {
-                // Get all subscriptions for this topic
-                const subscriptions = await this.adminService.getSubscriptionStatistics();
-                const topicStats = subscriptions.topicDistribution.find(t => t.topicId === sessionData.topicId);
+                // Get actual subscribers for this topic
+                users = await this.adminService.getTopicSubscribers(sessionData.topicId);
                 
-                // This is simplified - in real implementation, you'd need to fetch actual user IDs
-                // For now, we'll just get all users (this should be improved)
+                // Filter out blocked users
                 const allUsers = await this.adminService.getAllUsers();
-                users = allUsers.filter(u => !u.isBlocked).map(u => u._id);
+                const blockedUserIds = allUsers.filter(u => u.isBlocked).map(u => u._id);
+                users = users.filter(userId => !blockedUserIds.includes(userId));
             }
 
             let successCount = 0;

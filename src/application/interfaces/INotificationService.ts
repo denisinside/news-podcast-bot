@@ -51,6 +51,20 @@ export interface INotificationService {
         error?: string;
     }>;
 
+    /**
+     * Sends a message with optional media (image) and article URL button
+     * @param userId - Telegram user ID
+     * @param message - Message text to send
+     * @param imageUrl - Optional image URL to attach
+     * @param articleUrl - Optional article URL for button
+     * @param parseMode - Optional parse mode (Markdown, HTML)
+     * @returns Promise with delivery result
+     */
+    sendMessageWithMedia(userId: string, message: string, imageUrl?: string, articleUrl?: string, parseMode?: 'Markdown' | 'HTML'): Promise<{
+        success: boolean;
+        error?: string;
+    }>;
+
     // Internal services access
     messageTemplateService: IMessageTemplateService;
     podcastService?: IPodcastService;

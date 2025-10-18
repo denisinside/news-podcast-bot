@@ -48,6 +48,7 @@ export interface IAdminService {
     // Content management
     getUserSubscriptions(userId: string): Promise<ISubscription[]>;
     getRecentArticlesByTopics(topicIds: string[], limit: number): Promise<IArticle[]>;
+    getTopicSubscribers(topicId: string): Promise<string[]>;
     
     // News parsing
     triggerNewsParsing(): Promise<{ success: boolean; message: string }>;
