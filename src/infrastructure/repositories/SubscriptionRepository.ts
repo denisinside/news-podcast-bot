@@ -27,7 +27,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
     }
 
     async findByTopicId(topicId: string): Promise<ISubscription[]> {
-        return Subscription.find({ topicId, isActive: true });
+        return Subscription.find({ topicId: new Types.ObjectId(topicId), isActive: true });
     }
 
     async findAll(): Promise<ISubscription[]> {

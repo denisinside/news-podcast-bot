@@ -1,10 +1,14 @@
 import { ITopic } from '@models/Topic';
 import { IUser, UserRole } from '@models/User';
+import { IArticle } from '@models/Article';
+import { ISubscription } from '@models/Subscription';
 import { ITopicRepository } from '@infrastructure/repositories/ITopicRepository';
 import { IUserRepository } from '@infrastructure/repositories/IUserRepository';
 import { ISubscriptionRepository } from '@infrastructure/repositories/ISubscriptionRepository';
 import { IPodcastRepository } from '@infrastructure/repositories/IPodcastRepository';
+import { IArticleRepository } from '@infrastructure/repositories/IArticleRepository';
 import { PodcastStatus } from '@models/Podcast';
+import { INewsFinderService } from '../interfaces/INewsFinderService';
 import {
     IAdminService,
     TopicWithSubscribers,
@@ -18,7 +22,9 @@ export class AdminService implements IAdminService {
         private readonly topicRepository: ITopicRepository,
         private readonly userRepository: IUserRepository,
         private readonly subscriptionRepository: ISubscriptionRepository,
-        private readonly podcastRepository: IPodcastRepository
+        private readonly podcastRepository: IPodcastRepository,
+        private readonly articleRepository: IArticleRepository,
+        private readonly newsFinderService?: INewsFinderService
     ) {}
 
     // ==================== TOPIC MANAGEMENT ====================
@@ -143,14 +149,26 @@ export class AdminService implements IAdminService {
         const topics = await this.topicRepository.findAll();
 
         for (const subscription of activeSubscriptions) {
-            const topicId = String(subscription.topicId);
-            const topic = topics.find(t => String(t._id) === topicId);
+            // Handle both ObjectId and populated topicId
+            let topicId: string;
+            let topicName: string | undefined;
             
-            if (topic) {
+            if (typeof subscription.topicId === 'object' && subscription.topicId !== null) {
+                // If topicId is populated (contains the full topic object)
+                topicId = String((subscription.topicId as any)._id);
+                topicName = (subscription.topicId as any).name;
+            } else {
+                // If topicId is just an ObjectId
+                topicId = String(subscription.topicId);
+                const topic = topics.find(t => String(t._id) === topicId);
+                topicName = topic?.name;
+            }
+            
+            if (topicName) {
                 if (topicCounts.has(topicId)) {
                     topicCounts.get(topicId)!.count++;
                 } else {
-                    topicCounts.set(topicId, { name: topic.name, count: 1 });
+                    topicCounts.set(topicId, { name: topicName, count: 1 });
                 }
             }
         }
@@ -183,5 +201,76 @@ export class AdminService implements IAdminService {
             readyPodcasts,
             failedPodcasts
         };
+    }
+
+    async getUserSubscriptions(userId: string): Promise<ISubscription[]> {
+        return await this.subscriptionRepository.findByUserId(userId);
+    }
+
+    async getRecentArticlesByTopics(topicIds: string[], limit: number): Promise<IArticle[]> {
+        // This is a simplified implementation - in real scenario you'd want to query articles by topic
+        const allArticles = await this.articleRepository.findAll();
+        
+        // Filter articles by topic IDs and sort by publication date
+        const filteredArticles = allArticles
+            .filter(article => {
+                const articleTopicId = (article as any).topicId?._id || (article as any).topicId;
+                return topicIds.includes(String(articleTopicId));
+            })
+            .sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime())
+            .slice(0, limit);
+
+        return filteredArticles;
+    }
+
+    async getTopicSubscribers(topicId: string): Promise<string[]> {
+        // Get all subscriptions and filter by topicId
+        const allSubscriptions = await this.subscriptionRepository.findAll();
+        const topicSubscriptions = allSubscriptions.filter(sub => {
+            if (typeof sub.topicId === 'object' && sub.topicId !== null) {
+                // If topicId is populated (contains the full topic object)
+                return String((sub.topicId as any)._id) === topicId && sub.isActive;
+            } else {
+                // If topicId is just an ObjectId
+                return String(sub.topicId) === topicId && sub.isActive;
+            }
+        });
+        
+        console.log('Topic subscribers debug:', {
+            topicId,
+            subscriptionsFound: topicSubscriptions.length,
+            subscriptions: topicSubscriptions.map(s => ({
+                id: s._id,
+                userId: s.userId,
+                topicId: typeof s.topicId === 'object' ? String((s.topicId as any)._id) : String(s.topicId),
+                isActive: s.isActive
+            }))
+        });
+        
+        return topicSubscriptions.map(sub => sub.userId);
+    }
+
+    async triggerNewsParsing(): Promise<{ success: boolean; message: string }> {
+        try {
+            if (!this.newsFinderService) {
+                return {
+                    success: false,
+                    message: "Сервіс парсингу новин недоступний"
+                };
+            }
+
+            await this.newsFinderService.fetchAndSaveAllTopics();
+        
+        return {
+                success: true,
+                message: "Парсинг новин запущено успішно"
+            };
+        } catch (error) {
+            console.error("Error triggering news parsing:", error);
+            return {
+                success: false,
+                message: `Помилка при запуску парсингу: ${error}`
+            };
+        }
     }
 }

@@ -4,6 +4,7 @@ import { IBotContext } from "../../../context/IBotContext";
 import { Markup, Scenes } from "telegraf";
 import { IAdminService } from "../../../application/interfaces/IAdminService";
 import { ISubscriptionService } from "../../../application/interfaces/ISubscriptionService";
+import {QueueManager} from "@infrastructure/managers/QueueManager";
 
 export class MySubscriptionsScene implements IScene {
     private readonly scene: Scenes.BaseScene<IBotContext>;
@@ -11,7 +12,7 @@ export class MySubscriptionsScene implements IScene {
 
     constructor(
         private readonly adminService: IAdminService,
-        private readonly subscriptionService: ISubscriptionService
+        private readonly subscriptionService: ISubscriptionService,
     ) {
         this.scene = new Scenes.BaseScene<IBotContext>(this.name);
         this.registerHandlers();
@@ -89,6 +90,25 @@ export class MySubscriptionsScene implements IScene {
                         [Markup.button.callback("🏠 Головне меню", "back_to_start")]
                     ])
                 );
+            }
+        });
+
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
             }
         });
 

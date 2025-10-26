@@ -20,6 +20,19 @@ export class PodcastRepository implements IPodcastRepository {
         return await Podcast.find({ userId }).populate('articles').sort({ creationDate: -1 });
     }
 
+    async findByUserIdAndStatus(userId: string, status: string): Promise<IPodcast | null> {
+        return await Podcast.findOne({ userId, status }).populate('articles');
+    }
+
+    async findRecentByUserId(userId: string, timeWindowMs: number): Promise<IPodcast | null> {
+        const cutoffDate = new Date(Date.now() - timeWindowMs);
+        return await Podcast.findOne({ 
+            userId, 
+            creationDate: { $gte: cutoffDate },
+            status: 'READY'
+        }).populate('articles').sort({ creationDate: -1 });
+    }
+
     async findAll(): Promise<IPodcast[]> {
         return Podcast.find().populate('articles').sort({ creationDate: -1 });
     }

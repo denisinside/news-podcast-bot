@@ -6,7 +6,6 @@ import { IAdminService } from "@application/interfaces/IAdminService";
 import { ISubscriptionService } from "@application/interfaces/ISubscriptionService";
 import { IUserService } from "@application/interfaces";
 import {IUser, UserRole} from "@/models";
-import {Types} from "mongoose";
 
 export class StartScene implements IScene {
     private readonly scene: Scenes.BaseScene<IBotContext>;
@@ -37,7 +36,7 @@ export class StartScene implements IScene {
             const username = String(ctx.from?.first_name);
 
             const user: IUser = await this.userService.findOrCreateUser(tgId, username);
-            
+
             // Check if user is blocked
             if (user.isBlocked) {
                 await ctx.reply("🚫 Ваш акаунт заблоковано. Зверніться до адміністратора.");
@@ -153,7 +152,6 @@ export class StartScene implements IScene {
         this.scene.action("settings", async (ctx) => {
             try {
                 console.log("Settings button clicked in StartScene");
-                console.log(ctx);
                 await ctx.answerCbQuery();
                 await ctx.scene.enter("settings");
             } catch (error) {

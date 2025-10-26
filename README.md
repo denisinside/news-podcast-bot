@@ -1,100 +1,226 @@
-# News podcast bot
+# News Podcast Bot
 
-Цей проєкт організований за принципами **чистої архітектури** (clean architecture) з розділенням на рівні:
-- `application` (бізнес-логіка),
+Цей проєкт організований за принципами **чистої архітектури** (Clean Architecture) з розділенням на рівні:
+- `application` (бізнес-логіка та сервіси),
 - `infrastructure` (доступ до зовнішніх систем),
 - `presentation` (контролери та UI),
 - `models` (базові сутності домену),
-- `config`(доступ до змінних середовища),
-- `context`(контекст бота).
----
-
-## Структура проєкту
-
-Головні точки входу в застосунок і воркери для бекграунд-задач.
-
----
-### **index.ts**
-Підключення команд та сцен до бота, підключення сервісів, ініціалізація бота
+- `config` (доступ до змінних середовища),
+- `context` (контекст бота),
+- `workers` (фонові задачі),
+- `types` (типи TypeScript).
 
 ---
 
-### **application/**
+## 🏗️ Структура проєкту
+
+### **Точки входу**
+- **`index.ts`** - головний файл запуску бота з ініціалізацією всіх сервісів
+- **`NewsPodcastBot.ts`** - основний клас бота з підключенням до Telegram API
+- **`worker.ts`** - точка входу для фонових воркерів (поки не реалізовано)
+
+---
+
+### **📁 application/**
 Бізнес-логіка та сервіси:
-- `services/` – сервіси, що інкапсулюють роботу з різними доменами  
-  (наприклад, `AdminService`, `NewsFinderService`, `PodcastService`, `UserService` тощо).
+
+#### **`interfaces/`** - інтерфейси сервісів:
+- `IAdminService.ts` - адміністративні операції
+- `INewsFinderService.ts` - пошук та обробка новин
+- `INotificationService.ts` - відправка повідомлень
+- `IPodcastService.ts` - генерація подкастів
+- `ISubscriptionService.ts` - управління підписками
+- `IUserService.ts` - робота з користувачами
+- `IUserSettingsService.ts` - налаштування користувачів
+- `IMessageTemplateService.ts` - шаблони повідомлень
+- `ISchedulingService.ts` - планування завдань
+
+#### **`services/`** - реалізації сервісів:
+- `AdminService.ts` - адміністративні функції
+- `AdvertisementService.ts` - управління рекламою
+- `MessageTemplateService.ts` - шаблони повідомлень
+- `NewsFinderService.ts` - пошук та парсинг новин
+- `NotificationService.ts` - відправка повідомлень користувачам
+- `PodcastService.ts` - генерація аудіо подкастів
+- `SchedulingService.ts` - планування завдань
+- `SubscriptionService.ts` - управління підписками
+- `UserService.ts` - робота з користувачами
+- `UserSettingsService.ts` - налаштування користувачів
 
 ---
 
-### **infrastructure/**
+### **📁 infrastructure/**
 Реалізації інтерфейсів для взаємодії із зовнішнім світом:
-- `clients/` – клієнти для зовнішніх API чи сервісів (наприклад, файлове сховище, черги повідомлень, text-to-speech).
-- `repositories/` – реалізації доступу до бази даних (репозиторії для користувачів, статей, підписок, подкастів).
-- `strategies/` – стратегії отримання новин або інтеграції з іншими джерелами (`RssSource`, `INewsSourceStrategy`).
+
+#### **`clients/`** - клієнти для зовнішніх API:
+- `GeminiClient.ts` - інтеграція з Google Gemini AI для генерації тексту та аудіо
+- `FileStorageClient.ts` - робота з файловим сховищем
+- `IGeminiClient.ts`, `IFileStorageClient.ts`, `ITextToSpeechClient.ts` - інтерфейси
+
+#### **`repositories/`** - реалізації доступу до бази даних:
+- `UserRepository.ts` - користувачі
+- `TopicRepository.ts` - теми новин
+- `ArticleRepository.ts` - статті
+- `SubscriptionRepository.ts` - підписки
+- `PodcastRepository.ts` - подкасти
+- `AdvertisementRepository.ts` - реклама
+- Відповідні інтерфейси (`I*Repository.ts`)
+
+#### **`strategies/`** - стратегії отримання новин:
+- `RssSource.ts` - парсинг RSS джерел
+- `INewsSourceStrategy.ts` - інтерфейс стратегії
+
+#### **`managers/`** - менеджери для складних операцій:
+- `QueueManager.ts` - управління чергами завдань
+
+#### **`middleware/`** - middleware для Telegram бота:
+- `AdminMiddleware.ts` - перевірка прав адміністратора
 
 ---
 
-### **migrations/**
-Міграції для бази даних.
-- `.gitkeep` – заглушка, щоб папка відслідковувалась у Git, навіть коли ще немає файлів.
-
----
-
-### **models/**
-Сутності:
-- `User.ts`, `Article.ts`, `Podcast.ts`, `Subscription.ts`, `Topic.ts` тощо.
-
----
-
-### **presentation/**
+### **📁 presentation/**
 Відповідає за представлення та взаємодію з користувачем:
-- `admin/` – REST-контролери та роутинг для адміністративної панелі.
-- `telegram/` – інтеграція з Telegram Bot API (контролер, UI, логіка бота).
+
+#### **`telegram/`** - інтеграція з Telegram Bot API:
+- `TelegramBot.ts` - основний клас бота
+- `TelegramController.ts` - контролер для обробки команд
+- `TelegramUI.ts` - UI компоненти
+
+#### **`telegram/scenes/`** - сцени для різних режимів роботи:
+- `StartScene.ts` - головне меню
+- `SubscribeScene.ts` - підписка на теми
+- `UnsubscribeScene.ts` - відписка від тем
+- `MySubscriptionsScene.ts` - перегляд підписок
+- `SettingsScene.ts` - налаштування користувача
+- `AdminMenuScene.ts` - адміністративне меню
+- `AdminTopicsScene.ts` - управління темами
+- `AdminStatisticsScene.ts` - статистика
+- `AdminUsersScene.ts` - управління користувачами
+- `AdminBroadcastScene.ts` - розсилка повідомлень
+- `AdminAdvertisementScene.ts` - управління рекламою
+
+#### **`telegram/commands/`** - команди бота:
+- `ICommand.ts` - інтерфейс команди
 
 ---
 
-### **types/**
-Окремі типи та інтерфейси TypeScript для спільного використання:
-- `queue.ts` – типи для черг.
-- `telegram.ts` – типи для Telegram-інтеграції.
+### **📁 models/**
+Сутності домену:
+- `User.ts` - користувач
+- `Topic.ts` - тема новин
+- `Article.ts` - стаття
+- `Subscription.ts` - підписка
+- `Podcast.ts` - подкаст
+- `UserSettings.ts` - налаштування користувача
+- `Advertisement.ts` - реклама
 
 ---
 
-### **utils/**
-Хелпери та утиліти:
-- `logger.ts` – логування.
-- `validation.ts` – валідація.
-- `helpers.ts` – допоміжні функції.
-
----
-
-### **workers/**
+### **📁 workers/**
 Фонові задачі (background jobs):
-- `NewsFetcherProcessor.ts` – обробник новин.
-- `PodcastGeneratorProcessor.ts` – обробник подкастів.
-- `index.ts` – точка входу для воркерів.
+- `BaseQueueWorker.ts` - базовий клас для воркерів
+- `NewsQueueWorker.ts` - обробник новин
+- `PodcastQueueWorker.ts` - обробник подкастів
+- `NewsParserQueueWorker.ts` - парсинг новин
+- `ScheduledAdvertisementProcessor.ts` - обробка запланованої реклами
 
 ---
 
-## Як працює логіка
-- **Presentation** приймає запити (REST, Telegram).
-- Викликає **Application services**, які містять бізнес-правила.
-- Вони взаємодіють через **Infrastructure** (репозиторії, клієнти API).
-- **Models** описують сутності, з якими працюють сервіси.
-- **Workers** виконують довгі або періодичні задачі у бекграунді.
-- **Migrations** допомагають синхронізувати базу з кодом.
+### **📁 config/**
+Конфігурація та підключення до зовнішніх сервісів:
+- `ConfigService.ts` - доступ до змінних середовища
+- `QueueService.ts` - робота з чергами (BullMQ + Redis)
+- `MongoDbService.ts` - підключення до MongoDB
+- `telegram.ts` - конфігурація Telegram
 
---- 
+---
 
-## Особливості Telegram інтеграції
+### **📁 types/**
+Типи TypeScript для спільного використання:
+- `queue.ts` - типи для черг
+- `telegram.ts` - типи для Telegram-інтеграції
 
-Команди:
+---
+
+### **📁 utils/**
+Хелпери та утиліти:
+- `logger.ts` - логування
+- `validation.ts` - валідація
+- `helpers.ts` - допоміжні функції
+
+---
+
+### **📁 migrations/**
+Міграції для бази даних:
+- `add-user-roles.ts` - додавання ролей користувачів
+- `remove-telegram-id-index.ts` - видалення індексу
+
+---
+
+## 🔄 Як працює логіка
+
+1. **Presentation** приймає запити від користувачів через Telegram
+2. Викликає **Application services**, які містять бізнес-правила
+3. Сервіси взаємодіють через **Infrastructure** (репозиторії, клієнти API)
+4. **Models** описують сутності, з якими працюють сервіси
+5. **Workers** виконують довгі або періодичні задачі у бекграунді
+
+---
+
+## 🤖 Особливості Telegram інтеграції
+
+### **Команди**
 Кожна команда окремим класом, підключається через контролер.
 
-Сцени:
-Наприклад, StartScene або SubscribeScene, де користувач обирає теми через inline-кнопки.
+### **Сцени**
+Наприклад, `StartScene` або `SubscribeScene`, де користувач обирає теми через inline-кнопки.
 Кожна сцена окремим класом, підключається через контролер.
 
-Сесії MongoDB:
+### **Сесії MongoDB**
 Зберігають стан користувача між кроками сценарію, замість локальних сесій.
+
+### **Адміністративна панель**
+Повноцінна адміністративна панель з:
+- Управління темами новин
+- Статистика користувачів
+- Розсилка повідомлень
+- Управління рекламою
+
 ---
+
+## 🚀 Основні функції
+
+### **Для користувачів:**
+- Підписка на теми новин
+- Отримання персоналізованих новин
+- Генерація аудіо подкастів
+- Налаштування частоти отримання новин
+- Управління підписками
+
+### **Для адміністраторів:**
+- Додавання/видалення тем новин
+- Перегляд статистики користувачів
+- Розсилка повідомлень
+- Управління рекламою
+- Моніторинг роботи системи
+
+### **Технічні особливості:**
+- Асинхронна обробка завдань через BullMQ
+- Інтеграція з Google Gemini AI для генерації контенту
+- Автоматичний парсинг RSS джерел
+- Система черг для обробки подкастів
+- MongoDB для зберігання даних
+- Redis для черг завдань
+
+---
+
+## 🛠️ Технологічний стек
+
+- **TypeScript** - основна мова програмування
+- **Node.js** - runtime середовище
+- **Telegraf** - Telegram Bot API
+- **MongoDB** - база даних
+- **Redis** - черги завдань
+- **BullMQ** - система черг
+- **Google Gemini AI** - генерація контенту
+- **FFmpeg** - обробка аудіо

@@ -1,7 +1,6 @@
 import { IUser, UserRole } from '@models/User';
 import { IUserRepository } from '@infrastructure/repositories/IUserRepository';
-import { Context } from 'telegraf';
-import {IUserService} from "@application/interfaces";
+import { IUserService } from "@application/interfaces";
 
 export class UserService implements IUserService {
     private userRepository: IUserRepository;

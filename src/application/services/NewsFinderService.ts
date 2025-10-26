@@ -6,20 +6,31 @@ import { INewsSourceStrategy } from '@infrastructure/strategies/INewsSourceStrat
 import { NewsSource } from '@/types';
 import { INewsFinderService } from '../interfaces/INewsFinderService';
 import { RssSource } from '@/infrastructure/strategies/RssSource';
+import { INotificationService } from '../interfaces/INotificationService';
+import { IUserSettingsService } from '../interfaces/IUserSettingsService';
+import { IUserSettings, NewsFrequency } from '@/models/UserSettings';
 
 export class NewsFinderService implements INewsFinderService {
     private articleRepository: IArticleRepository;
     private topicRepository: ITopicRepository;
     private strategies: Map<string, INewsSourceStrategy>;
+    private notificationService?: INotificationService;
+    private userSettingsService: IUserSettingsService;
 
     constructor(
         articleRepository: IArticleRepository,
-        topicRepository: ITopicRepository
+        topicRepository: ITopicRepository,
+        userSettingsService: IUserSettingsService
     ) {
         this.articleRepository = articleRepository;
         this.topicRepository = topicRepository;
         this.strategies = new Map();
         this.initAllStrategies();
+        this.userSettingsService = userSettingsService;
+    }
+
+    setNotificationService(notificationService: INotificationService): void {
+        this.notificationService = notificationService;
     }
 
     setStrategy(sourceId: string, strategy: INewsSourceStrategy): void {
@@ -29,9 +40,9 @@ export class NewsFinderService implements INewsFinderService {
     async fetchAndSaveAllTopics(): Promise<void> {
         try {
             console.log('Starting news fetching process for all topics...');
-            
+
             const topics = await this.topicRepository.findAll();
-            
+
             if (topics.length === 0) {
                 console.log('No topics found to fetch articles for');
                 return;
@@ -69,8 +80,9 @@ export class NewsFinderService implements INewsFinderService {
             }
 
             const savedArticles = await this.articleRepository.bulkInsert(articles);
-            
+
             console.log(`Saved ${savedArticles.length} new articles for topic: ${topic.name}`);
+
         } catch (error) {
             console.error(`Error processing topic ${topic.name}:`, error);
         }
@@ -83,8 +95,8 @@ export class NewsFinderService implements INewsFinderService {
     async getArticlesByKeywords(keywords: string[]): Promise<IArticle[]> {
         try {
             const allArticles = await this.articleRepository.findAll();
-            return allArticles.filter(article => 
-                keywords.some(keyword => 
+            return allArticles.filter(article =>
+                keywords.some(keyword =>
                     article.title.toLowerCase().includes(keyword.toLowerCase()) ||
                     article.content.toLowerCase().includes(keyword.toLowerCase())
                 )
@@ -94,6 +106,63 @@ export class NewsFinderService implements INewsFinderService {
             return [];
         }
     }
+
+    async getArticlesForUser(userId: string): Promise<IArticle[]> {
+        const userSettings = await this.userSettingsService.getUserSettings(Number(userId));
+        if (!userSettings) {
+            return [];
+        }
+
+        if (userSettings.newsFrequency === NewsFrequency.DISABLED) {
+            return [];
+        }
+
+        const now = new Date();
+        const previousSendTime = this.getPreviousSendTime(userSettings, now);
+        const untilDate = new Date(now.getTime() - 60 * 1000);
+
+        return await this.articleRepository.findByUserId(userId, previousSendTime, untilDate);
+    }
+
+    private getPreviousSendTime(userSettings: IUserSettings, now: Date): Date {
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentSecond = now.getSeconds();
+        const currentMillisecond = now.getMilliseconds();
+        
+        switch (userSettings.newsFrequency) {
+            case NewsFrequency.HOURLY:
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour - 1, 0, 0, 0);
+                
+            case NewsFrequency.EVERY_3_HOURS:
+                // Find the last 3-hour interval (0, 3, 6, 9, 12, 15, 18, 21)
+                const last3HourInterval = Math.floor(currentHour / 3) * 3;
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), last3HourInterval, 0, 0, 0);
+                
+            case NewsFrequency.TWICE_DAILY:
+                // 8:00 or 20:00 - whichever was last
+                if (currentHour >= 20) {
+                    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0, 0);
+                } else if (currentHour >= 8) {
+                    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0, 0);
+                } else {
+                    // Before 8:00, so previous day at 20:00
+                    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 20, 0, 0, 0);
+                }
+                
+            case NewsFrequency.DAILY:
+                // Previous day at 8:00
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 8, 0, 0, 0);
+                
+            case NewsFrequency.DISABLED:
+                // Return a very old date to ensure no articles are returned
+                return new Date(0);
+                
+            default:
+                return now;
+        }
+    }
+
 
     async getArticlesByDateRange(startDate: Date, endDate: Date): Promise<IArticle[]> {
         return await this.articleRepository.findByDateRange(startDate, endDate);
@@ -109,6 +178,7 @@ export class NewsFinderService implements INewsFinderService {
 
     async initAllStrategies(): Promise<void> {
         const topics = await this.topicRepository.findAll();
+        this.strategies.clear();
         for (const topic of topics) {
             const strategy = new RssSource(topic);
             this.strategies.set(topic.sourceUrl, strategy);

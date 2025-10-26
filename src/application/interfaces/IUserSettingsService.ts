@@ -5,5 +5,6 @@ export interface IUserSettingsService {
     updateNewsFrequency(userId: number, frequency: NewsFrequency): Promise<void>;
     updateAudioPodcasts(userId: number, enabled: boolean): Promise<void>;
     createDefaultSettings(userId: number): Promise<IUserSettings>;
+    getAllUserSettings(): Promise<IUserSettings[]>;
 }
 

@@ -4,16 +4,20 @@ import { IBotContext } from "../../../context/IBotContext";
 import { Markup, Scenes } from "telegraf";
 import { IUserSettingsService } from "../../../application/interfaces/IUserSettingsService";
 import { NewsFrequency } from "../../../models/UserSettings";
+import {QueueManager} from "@infrastructure/managers/QueueManager";
 
 export class SettingsScene implements IScene {
     private readonly scene: Scenes.BaseScene<IBotContext>;
+    private readonly queueManager: QueueManager;
     name: string = "settings";
 
     constructor(
-        private readonly userSettingsService: IUserSettingsService
+        private readonly userSettingsService: IUserSettingsService,
+        queueManager: QueueManager
     ) {
         this.scene = new Scenes.BaseScene<IBotContext>(this.name);
         this.registerHandlers();
+        this.queueManager = queueManager;
     }
 
     getScene(): BaseScene<IBotContext> {
@@ -34,6 +38,7 @@ export class SettingsScene implements IScene {
     private async showMainSettings(ctx: any) {
         const userId = ctx.from!.id;
         const settings = await this.userSettingsService.getUserSettings(userId);
+        await this.queueManager.initializeUser(String(userId));
 
         if (!settings) {
             await ctx.reply("❌ Помилка завантаження налаштувань");
@@ -76,6 +81,25 @@ export class SettingsScene implements IScene {
             }
         });
 
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
+            }
+        });
+
         // Handler for changing news frequency
         this.scene.action("change_frequency", async (ctx) => {
             try {
@@ -112,6 +136,8 @@ export class SettingsScene implements IScene {
                 const userId = ctx.from!.id;
 
                 await this.userSettingsService.updateNewsFrequency(userId, frequency);
+                await this.queueManager.initializeUser(String(userId));
+
 
                 await ctx.editMessageText(
                     `✅ *Частоту новин оновлено!*\n\n` +
@@ -168,6 +194,7 @@ export class SettingsScene implements IScene {
                 const userId = ctx.from!.id;
 
                 await this.userSettingsService.updateAudioPodcasts(userId, enabled);
+                await this.queueManager.initializeUser(String(userId));
 
                 await ctx.editMessageText(
                     `${enabled ? '✅' : '❌'} *Налаштування збережено!*\n\n` +

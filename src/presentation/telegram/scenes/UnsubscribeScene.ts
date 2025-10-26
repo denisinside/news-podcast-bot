@@ -43,9 +43,24 @@ export class UnsubscribeScene implements IScene {
                 }
 
                 const allTopics = await this.adminService.getAllTopics();
-                const subscribedTopics = allTopics.filter(topic =>
-                    subscriptions.some(sub => String(sub.topicId._id) === topic.id)
-                );
+                                
+                const subscribedTopics = allTopics.filter(topic => {
+                    const isSubscribed = subscriptions.some(sub => {
+                        // Handle both populated and non-populated topicId
+                        if (!sub.topicId) {
+                            return false;
+                        }
+                        
+                        const topicId = typeof sub.topicId === 'object' && sub.topicId !== null 
+                            ? (sub.topicId as any)._id || sub.topicId
+                            : sub.topicId;
+                            
+                        const matches = String(topicId) === String(topic.id);
+                        
+                        return matches;
+                    });
+                    return isSubscribed;
+                });
 
                 if (subscribedTopics.length === 0) {
                     await ctx.reply(
@@ -77,13 +92,38 @@ export class UnsubscribeScene implements IScene {
                 );
 
             } catch (error) {
-                console.log("Unsubscribe scene error:", error);
-                await ctx.reply(
-                    "❌ Виникла помилка при завантаженні підписок. Спробуйте пізніше.",
-                    Markup.inlineKeyboard([
-                        [Markup.button.callback("🏠 Головне меню", "back_to_menu")]
-                    ])
-                );
+
+                try {
+                    await ctx.reply(
+                        "❌ Виникла помилка при завантаженні підписок. Спробуйте пізніше.",
+                        {
+                            reply_markup: Markup.inlineKeyboard([
+                                [Markup.button.callback("🏠 Головне меню", "back_to_menu")]
+                            ]).reply_markup
+                        }
+                    );
+                } catch (replyError) {
+                    console.error("❌ [UnsubscribeScene] Error sending error message:", replyError);
+                }
+            }
+        });
+
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
             }
         });
 
@@ -107,12 +147,21 @@ export class UnsubscribeScene implements IScene {
                 );
 
             } catch (error) {
-                console.log("Unsubscribe action error:", error);
+                console.error("❌ [UnsubscribeScene] Unsubscribe action error:", error);
+                console.error("❌ [UnsubscribeScene] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+                
                 try {
                     await ctx.answerCbQuery("❌ Помилка відписки");
-                    await ctx.editMessageText("❌ Виникла помилка при відписці. Спробуйте пізніше.");
+                    await ctx.editMessageText(
+                        "❌ Виникла помилка при відписці. Спробуйте пізніше.",
+                        {
+                            reply_markup: Markup.inlineKeyboard([
+                                [Markup.button.callback("🏠 Головне меню", "back_to_menu")]
+                            ]).reply_markup
+                        }
+                    );
                 } catch (fallbackError) {
-                    console.log("Fallback error:", fallbackError);
+                    console.error("❌ [UnsubscribeScene] Fallback error:", fallbackError);
                 }
             }
         });

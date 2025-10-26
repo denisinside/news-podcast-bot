@@ -5,6 +5,7 @@ import { BaseScene } from "telegraf/scenes";
 import { IAdminService } from "@application/interfaces/IAdminService";
 import { AdminMiddleware } from "@infrastructure/middleware/AdminMiddleware";
 import { Telegraf } from "telegraf";
+import { INotificationService } from "@application/interfaces/INotificationService";
 
 interface SessionData {
     message?: string;
@@ -19,7 +20,8 @@ export class AdminBroadcastScene implements IScene {
     constructor(
         private readonly adminService: IAdminService,
         private readonly adminMiddleware: AdminMiddleware,
-        private readonly bot: Telegraf<IBotContext>
+        private readonly bot: Telegraf<IBotContext>,
+        private readonly notificationService: INotificationService
     ) {
         this.scene = new BaseScene<IBotContext>(this.name);
         this.registerHandlers();
@@ -61,10 +63,30 @@ export class AdminBroadcastScene implements IScene {
                         [Markup.button.callback("👥 Всім користувачам", "broadcast_all")],
                         [Markup.button.callback("✅ Тільки активним", "broadcast_active")],
                         [Markup.button.callback("📰 За топіком", "broadcast_topic")],
+                        [Markup.button.callback("🧪 Тестове повідомлення", "test_broadcast")],
                         [Markup.button.callback("🔙 Назад", "back_to_admin")]
                     ]).reply_markup
                 }
             );
+        });
+
+        // Handle /start command
+        this.scene.command('start', async (ctx) => {
+            try {
+                await ctx.reply("🔙 Повертаємося до головного меню...");
+                await ctx.scene.leave();
+                await ctx.scene.enter("start");
+            } catch (error: any) {
+                console.log("Error handling /start command:", error);
+                // If user blocked the bot, just leave the scene silently
+                if (error.code === 403) {
+                    try {
+                        await ctx.scene.leave();
+                    } catch (leaveError) {
+                        console.log("Error leaving scene:", leaveError);
+                    }
+                }
+            }
         });
 
         this.scene.action("broadcast_all", async (ctx) => {
@@ -156,6 +178,10 @@ export class AdminBroadcastScene implements IScene {
             }
         });
 
+        this.scene.action("test_broadcast", async (ctx) => {
+            await this.sendTestBroadcast(ctx);
+        });
+
         // Handle text input
         this.scene.on("text", async (ctx) => {
             const sessionData = this.getSessionData(ctx);
@@ -181,10 +207,21 @@ export class AdminBroadcastScene implements IScene {
                     recipientCount = users.filter(u => !u.isBlocked).length;
                     targetText = 'активним користувачам';
                 } else if (sessionData.targetType === 'topic' && sessionData.topicId) {
+                    // Get topic name and subscriber count directly
+                    const topic = (await this.adminService.getAllTopics()).find(t => String(t._id) === sessionData.topicId);
                     const subscriptions = await this.adminService.getSubscriptionStatistics();
                     const topicStats = subscriptions.topicDistribution.find(t => t.topicId === sessionData.topicId);
                     recipientCount = topicStats?.count || 0;
-                    targetText = `підписникам топіку "${topicStats?.topicName}"`;
+                    targetText = `підписникам топіку "${topic?.name || topicStats?.topicName || 'Невідомий топік'}"`;
+                    
+                    // Debug logging
+                    console.log('Broadcast topic debug:', {
+                        topicId: sessionData.topicId,
+                        topicName: topic?.name,
+                        topicStatsName: topicStats?.topicName,
+                        recipientCount,
+                        targetText
+                    });
                 }
 
                 await ctx.reply(
@@ -290,14 +327,13 @@ export class AdminBroadcastScene implements IScene {
                 const allUsers = await this.adminService.getAllUsers();
                 users = allUsers.filter(u => !u.isBlocked).map(u => u._id);
             } else if (sessionData.targetType === 'topic' && sessionData.topicId) {
-                // Get all subscriptions for this topic
-                const subscriptions = await this.adminService.getSubscriptionStatistics();
-                const topicStats = subscriptions.topicDistribution.find(t => t.topicId === sessionData.topicId);
+                // Get actual subscribers for this topic
+                users = await this.adminService.getTopicSubscribers(sessionData.topicId);
                 
-                // This is simplified - in real implementation, you'd need to fetch actual user IDs
-                // For now, we'll just get all users (this should be improved)
+                // Filter out blocked users
                 const allUsers = await this.adminService.getAllUsers();
-                users = allUsers.filter(u => !u.isBlocked).map(u => u._id);
+                const blockedUserIds = allUsers.filter(u => u.isBlocked).map(u => u._id);
+                users = users.filter(userId => !blockedUserIds.includes(userId));
             }
 
             let successCount = 0;
@@ -339,6 +375,46 @@ export class AdminBroadcastScene implements IScene {
         } catch (error) {
             console.log("Error sending broadcast:", error);
             await ctx.reply("❌ Помилка при розсилці повідомлень.");
+        }
+    }
+
+    private async sendTestBroadcast(ctx: IBotContext) {
+        try {
+            await ctx.answerCbQuery("🧪 Надсилаю тестове повідомлення всім активним користувачам...");
+
+            const testMessage = `🧪 *Тестове повідомлення від адміністратора*
+
+Це тестове повідомлення для перевірки роботи системи розсилки.
+
+✅ Якщо ви бачите це повідомлення, система працює коректно!
+
+📅 Час: ${new Date().toLocaleString('uk-UA')}
+👤 Відправлено адміністратором`;
+
+            // Get all active users
+            const users = await this.adminService.getAllUsers();
+            const activeUsers = users.filter(user => !user.isBlocked);
+            
+            if (activeUsers.length === 0) {
+                await ctx.reply("❌ Немає активних користувачів для тестування.");
+                return;
+            }
+
+            const userIds = activeUsers.map(user => user._id);
+            const result = await this.notificationService.sendBulkMessages(userIds, testMessage);
+
+            await ctx.reply(
+                `🧪 *Тестове повідомлення надіслано!*\n\n` +
+                `📨 Відправлено: ${result.sent}\n` +
+                `❌ Помилок: ${result.failed}\n` +
+                `👥 Всього активних користувачів: ${activeUsers.length}`,
+                { parse_mode: 'Markdown' }
+            );
+
+            await ctx.scene.reenter();
+        } catch (error) {
+            console.log("Error sending test broadcast:", error);
+            await ctx.reply("❌ Помилка при надсиланні тестового повідомлення.");
         }
     }
 }
