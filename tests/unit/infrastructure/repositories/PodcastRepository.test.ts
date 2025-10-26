@@ -26,6 +26,7 @@ describe('PodcastRepository', () => {
     (Podcast as any).mockImplementation(() => mockPodcast);
     (Podcast.findById as any) = jest.fn();
     (Podcast.find as any) = jest.fn();
+    (Podcast.findOne as any) = jest.fn();
     (Podcast.findByIdAndUpdate as any) = jest.fn();
     (Podcast.findByIdAndDelete as any) = jest.fn();
   });
@@ -120,6 +121,86 @@ describe('PodcastRepository', () => {
       expect(mockQuery.populate).toHaveBeenCalledWith('articles');
       expect(mockQuery.sort).toHaveBeenCalledWith({ creationDate: -1 });
       expect(result).toBe(podcasts);
+    });
+  });
+
+  describe('findByUserIdAndStatus', () => {
+    it('should find podcast by user ID and status', async () => {
+      // Arrange
+      const userId = 'test-user-id';
+      const status = 'GENERATING';
+      const mockQuery = {
+        populate: jest.fn().mockResolvedValue(mockPodcast)
+      };
+      (Podcast.findOne as any).mockReturnValue(mockQuery);
+
+      // Act
+      const result = await podcastRepository.findByUserIdAndStatus(userId, status);
+
+      // Assert
+      expect(Podcast.findOne).toHaveBeenCalledWith({ userId, status });
+      expect(mockQuery.populate).toHaveBeenCalledWith('articles');
+      expect(result).toBe(mockPodcast);
+    });
+
+    it('should return null when podcast not found', async () => {
+      // Arrange
+      const userId = 'test-user-id';
+      const status = 'GENERATING';
+      const mockQuery = {
+        populate: jest.fn().mockResolvedValue(null)
+      };
+      (Podcast.findOne as any).mockReturnValue(mockQuery);
+
+      // Act
+      const result = await podcastRepository.findByUserIdAndStatus(userId, status);
+
+      // Assert
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findRecentByUserId', () => {
+    it('should find recent podcast by user ID within time window', async () => {
+      // Arrange
+      const userId = 'test-user-id';
+      const timeWindowMs = 60 * 60 * 1000; // 1 hour
+      const cutoffDate = new Date(Date.now() - timeWindowMs);
+      const mockQuery = {
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockResolvedValue(mockPodcast)
+      };
+      (Podcast.findOne as any).mockReturnValue(mockQuery);
+
+      // Act
+      const result = await podcastRepository.findRecentByUserId(userId, timeWindowMs);
+
+      // Assert
+      expect(Podcast.findOne).toHaveBeenCalledWith({
+        userId,
+        creationDate: { $gte: cutoffDate },
+        status: 'READY'
+      });
+      expect(mockQuery.populate).toHaveBeenCalledWith('articles');
+      expect(mockQuery.sort).toHaveBeenCalledWith({ creationDate: -1 });
+      expect(result).toBe(mockPodcast);
+    });
+
+    it('should return null when no recent podcast found', async () => {
+      // Arrange
+      const userId = 'test-user-id';
+      const timeWindowMs = 60 * 60 * 1000; // 1 hour
+      const mockQuery = {
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockResolvedValue(null)
+      };
+      (Podcast.findOne as any).mockReturnValue(mockQuery);
+
+      // Act
+      const result = await podcastRepository.findRecentByUserId(userId, timeWindowMs);
+
+      // Assert
+      expect(result).toBeNull();
     });
   });
 

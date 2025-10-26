@@ -57,7 +57,8 @@ describe('GeminiClient', () => {
             parts: [{
               text: 'Generated text response'
             }]
-          }
+          },
+          finishReason: 'STOP'
         }]
       };
       mockGenAI.models.generateContent.mockResolvedValue(mockResponse);
@@ -70,10 +71,13 @@ describe('GeminiClient', () => {
         model: 'gemini-2.5-flash-lite',
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: expect.objectContaining({
-          temperature: 1.2,
-          topP: 1,
-          topK: 1,
-          maxOutputTokens: 8192
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 8192,
+          safetySettings: expect.any(Array),
+          tools: expect.any(Array),
+          thinkingConfig: expect.any(Object)
         })
       });
       expect(result).toBe('Generated text response');
@@ -88,7 +92,8 @@ describe('GeminiClient', () => {
             parts: [{
               text: '```json\n{"result": "test"}\n```'
             }]
-          }
+          },
+          finishReason: 'STOP'
         }]
       };
       mockGenAI.models.generateContent.mockResolvedValue(mockResponse);
@@ -97,8 +102,8 @@ describe('GeminiClient', () => {
       const result = await geminiClient.generateText(prompt);
 
       // Assert
-      // The actual behavior removes ```json and ``` but keeps newlines
-      expect(result).toBe('\n{"result": "test"}\n');
+      // The actual behavior removes ```json and ``` and extracts JSON
+      expect(result).toBe('{"result": "test"}');
     });
 
     it('should throw error when response is invalid', async () => {
@@ -111,7 +116,7 @@ describe('GeminiClient', () => {
 
       // Act & Assert
       await expect(geminiClient.generateText(prompt)).rejects.toThrow(
-        'Failed to generate text with Gemini API.'
+        'Failed to generate text with Gemini API: Invalid response structure from Gemini API'
       );
     });
 
@@ -122,7 +127,28 @@ describe('GeminiClient', () => {
 
       // Act & Assert
       await expect(geminiClient.generateText(prompt)).rejects.toThrow(
-        'Failed to generate text with Gemini API.'
+        'Failed to generate text with Gemini API: API Error'
+      );
+    });
+
+    it('should throw error when response is blocked by safety filters', async () => {
+      // Arrange
+      const prompt = 'Test prompt';
+      const mockResponse = {
+        candidates: [{
+          content: {
+            parts: [{
+              text: 'Blocked content'
+            }]
+          },
+          finishReason: 'SAFETY'
+        }]
+      };
+      mockGenAI.models.generateContent.mockResolvedValue(mockResponse);
+
+      // Act & Assert
+      await expect(geminiClient.generateText(prompt)).rejects.toThrow(
+        'Failed to generate text with Gemini API: Response blocked by safety filters'
       );
     });
   });
